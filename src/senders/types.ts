@@ -12,6 +12,5 @@ export interface AlertsSender {
 export interface AlertParams {
     title: string;
     description?: string;
-    // Send silently without a notification sound.
     silent?: boolean;
 }

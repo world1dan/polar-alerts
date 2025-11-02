@@ -14,7 +14,12 @@ export interface TelegramAlertsConfig {
     /**
      * Optional: Set a thread ID when sending alerts to a specific thread on telegram (group topics).
      */
-    threadId?: number;
+    threadId?: number | string;
+    /**
+     * Optional: Send messages without notification sound.
+     * If true, alerts will be sent silently.
+     */
+    silent?: boolean;
 }
 
 export class TelegramAlertSender implements AlertsSender {
@@ -25,7 +30,7 @@ export class TelegramAlertSender implements AlertsSender {
             const awaitedParams =
                 params instanceof Promise ? await params : params;
 
-            const { title, description, silent = false } = awaitedParams;
+            const { title, description } = awaitedParams;
 
             const bot = new TelegramBot(this.config.botToken);
 
@@ -40,8 +45,12 @@ export class TelegramAlertSender implements AlertsSender {
                 await bot.sendMessage(this.config.chatId, message.trim(), {
                     parse_mode: 'Markdown',
                     disable_web_page_preview: true,
-                    disable_notification: silent,
-                    message_thread_id: this.config.threadId,
+                    disable_notification:
+                        awaitedParams.silent ?? this.config.silent,
+                    message_thread_id: Number(this.config.threadId),
+                    link_preview_options: {
+                        is_disabled: true,
+                    },
                 });
             } catch (error) {
                 console.error('Failed to send Telegram alert:', error);

@@ -5,6 +5,14 @@ import type { Product } from '@polar-sh/sdk/models/components/product.js';
 import type { OrderProduct } from '@polar-sh/sdk/models/components/orderproduct.js';
 import type { Customer } from '@polar-sh/sdk/models/components/customer.js';
 import type { CheckoutProduct } from '@polar-sh/sdk/models/components/checkoutproduct.js';
+import type { Discount } from '@polar-sh/sdk/models/components/discount.js';
+import type { DiscountFixedOnceForeverDuration } from '@polar-sh/sdk/models/components/discountfixedonceforeverduration.js';
+import type { DiscountFixedRepeatDuration } from '@polar-sh/sdk/models/components/discountfixedrepeatduration.js';
+import type { DiscountPercentageOnceForeverDuration } from '@polar-sh/sdk/models/components/discountpercentageonceforeverduration.js';
+import type { DiscountPercentageRepeatDuration } from '@polar-sh/sdk/models/components/discountpercentagerepeatduration.js';
+import type { Checkout } from '@polar-sh/sdk/models/components/checkout.js';
+import type { ProductPriceFixed } from '@polar-sh/sdk/models/components/productpricefixed.js';
+import type { ProductPriceFree } from '@polar-sh/sdk/models/components/productpricefree.js';
 
 type FieldFormat = 'code' | 'italic' | 'plain';
 
@@ -66,30 +74,106 @@ export class AlertDescriptionBuilder {
     moneyField(
         label: string,
         amountInCents: number,
-        condition: any = true
+        condition: any = true,
+        recurringInterval?: string | null
     ): this {
         if (condition) {
-            const text = `*${label}* - *$${amountInCents / 100}*`;
+            let text = `*${label}* - *$${amountInCents / 100}*`;
+            if (recurringInterval) {
+                text += `/${this.escapeMarkdown(recurringInterval)}`;
+            }
             this.sections.push(text);
         }
         return this;
     }
 
-    productInfo(
-        product: Product | CheckoutProduct | OrderProduct,
-        amount?: number
-    ): this {
+    productInfo(product: Product | CheckoutProduct | OrderProduct): this {
+        const price: ProductPriceFixed | ProductPriceFree | undefined =
+            'prices' in product
+                ? product.prices.find(
+                      (p) => p.amountType == 'fixed' || p.amountType === 'free'
+                  )
+                : undefined;
+
         let text = `[${this.escapeMarkdown(product.name)}](${getProductLink(
             this.config,
             product.id
         )})`;
-        if (amount !== undefined) {
-            text += ` (*$${amount / 100}*`;
-            if (product.recurringInterval) {
-                text += `/${this.escapeMarkdown(product.recurringInterval)}`;
+
+        if (price !== undefined) {
+            if (price.amountType === 'free') {
+                text += ` (free)`;
+            } else {
+                text += ` (*$${price.priceAmount / 100}*`;
+                if (product.recurringInterval) {
+                    text += `/${this.escapeMarkdown(
+                        product.recurringInterval
+                    )}`;
+                }
+                text += ')';
             }
-            text += ')';
         }
+
+        this.sections.push(text);
+        return this;
+    }
+
+    productsInfo(products: (Product | CheckoutProduct | OrderProduct)[]): this {
+        products.forEach((product) => {
+            this.productInfo(product);
+        });
+
+        return this;
+    }
+
+    discountInfo(
+        discount: Discount | Checkout['discount'] | undefined | null,
+        discountAmount?: number
+    ): this {
+        if (!discount) {
+            return this;
+        }
+
+        let text = '🏷️ *Discount* - ';
+
+        // Name and code
+        text += `*${this.escapeMarkdown(discount.name)}*`;
+        if (discount.code) {
+            text += ` (\`${this.escapeMarkdown(discount.code)}\`)`;
+        }
+
+        // Amount
+        if (isFixedDiscount(discount)) {
+            text += `\n       - *$${discount.amount / 100}* off`;
+        }
+
+        if (isPercentageDiscount(discount)) {
+            const percentage = discount.basisPoints / 100;
+            text += `\n       - *${percentage}%* off`;
+        }
+
+        // Duration
+        if (isOnceForeverDiscount(discount)) {
+            if (discount.duration == 'once') {
+                text += ' (one-time)';
+            }
+
+            if (discount.duration == 'forever') {
+                text += ' (forever)';
+            }
+        }
+
+        if (isRepeatingDiscount(discount)) {
+            text += ` (for ${discount.durationInMonths} month${
+                discount.durationInMonths > 1 ? 's' : ''
+            })`;
+        }
+
+        // Actual discount amount applied (if provided)
+        if (discountAmount !== undefined && discountAmount > 0) {
+            text += `\n       - *Savings* - *-$${discountAmount / 100}*`;
+        }
+
         this.sections.push(text);
         return this;
     }
@@ -133,7 +217,7 @@ export class AlertDescriptionBuilder {
         section += `\n🔗 [View Customer](${getCustomerLink(
             this.config,
             customer.id
-        )})\n`;
+        )})`;
 
         this.sections.push(section);
 
@@ -151,4 +235,32 @@ export class AlertDescriptionBuilder {
         const sections = await Promise.all(sectionPromises);
         return sections.join('\n');
     }
+}
+
+function isFixedDiscount(
+    discount: Discount | NonNullable<Checkout['discount']>
+): discount is DiscountFixedOnceForeverDuration | DiscountFixedRepeatDuration {
+    return discount.type === 'fixed';
+}
+
+function isPercentageDiscount(
+    discount: Discount | NonNullable<Checkout['discount']>
+): discount is
+    | DiscountPercentageOnceForeverDuration
+    | DiscountPercentageRepeatDuration {
+    return discount.type === 'percentage';
+}
+
+function isOnceForeverDiscount(
+    discount: Discount | NonNullable<Checkout['discount']>
+): discount is
+    | DiscountFixedOnceForeverDuration
+    | DiscountPercentageOnceForeverDuration {
+    return discount.duration === 'once';
+}
+
+function isRepeatingDiscount(
+    discount: Discount | NonNullable<Checkout['discount']>
+): discount is DiscountFixedRepeatDuration | DiscountPercentageRepeatDuration {
+    return discount.duration === 'repeating';
 }

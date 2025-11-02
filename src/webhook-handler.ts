@@ -15,6 +15,12 @@ const DEFAULT_EVENT_CONFIG: Record<EventType, boolean> = {
     'order.created': false,
     'order.paid': true,
     'order.refunded': true,
+    'order.updated': false,
+    'refund.created': true,
+    'refund.updated': true,
+    'customer.created': false,
+    'customer.updated': false,
+    'customer.deleted': false,
 };
 
 export class PolarAlertsClient {
