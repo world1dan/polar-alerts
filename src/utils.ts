@@ -15,13 +15,6 @@ export function getCustomerLink(
     return polarDashboardLink(config, `customers/${customerId}`);
 }
 
-export function getOrderLink(
-    config: PolarAlertsConfig,
-    orderId: string
-): string {
-    return polarDashboardLink(config, `orders/${orderId}`);
-}
-
 export function getProductLink(
     config: PolarAlertsConfig,
     productId: string
@@ -29,11 +22,18 @@ export function getProductLink(
     return polarDashboardLink(config, `products/${productId}`);
 }
 
+export function getOrderLink(
+    config: PolarAlertsConfig,
+    orderId: string
+): string {
+    return polarDashboardLink(config, `sales/${orderId}`);
+}
+
 export function getSubscriptionLink(
     config: PolarAlertsConfig,
     subscriptionId: string
 ): string {
-    return polarDashboardLink(config, `subscriptions/${subscriptionId}`);
+    return polarDashboardLink(config, `sales/subscriptions/${subscriptionId}`);
 }
 
 export function getCheckoutLink(
