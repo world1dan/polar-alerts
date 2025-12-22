@@ -1,6 +1,6 @@
 {
     "name": "polar-alerts",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Automatic Telegram alerts for Polar events with built-in webhook handling",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -28,17 +28,17 @@
     "author": "Daniil Prylepa",
     "license": "MIT",
     "dependencies": {
-        "node-telegram-bot-api": "^0.66.0",
-        "date-fns": "^4.0.0"
+        "node-telegram-bot-api": "^0.67.0",
+        "date-fns": "^4.1.0"
     },
     "peerDependencies": {
         "@polar-sh/sdk": ">=0.40.0 <1.0.0"
     },
     "devDependencies": {
-        "@polar-sh/sdk": "^0.40.3",
-        "@types/node": "^22.0.0",
-        "@types/node-telegram-bot-api": "^0.64.0",
-        "typescript": "^5.0.0"
+        "@polar-sh/sdk": "^0.42.1",
+        "@types/node": "^24.10.4",
+        "@types/node-telegram-bot-api": "^0.64.13",
+        "typescript": "^5.9.3"
     },
     "repository": {
         "type": "git",
