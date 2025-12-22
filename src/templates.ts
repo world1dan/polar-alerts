@@ -13,7 +13,7 @@ import {
     getCheckoutLink,
 } from './utils';
 import { AlertParams } from './senders/types';
-import { differenceInDays } from 'date-fns';
+import { endOfDay, format, formatDuration, intervalToDuration } from 'date-fns';
 
 export function createAlertTemplates({
     config,
@@ -195,21 +195,7 @@ export function createAlertTemplates({
                     subscription.recurringInterval
                 );
 
-            // Trial information
-            if (subscription.status === 'trialing') {
-                description
-                    .separator()
-                    .field(
-                        '🎁 Trial',
-                        subscription.trialStart && subscription.trialEnd
-                            ? `${differenceInDays(
-                                  subscription.trialStart,
-                                  subscription.trialEnd
-                              )} days`
-                            : 'Yes'
-                    )
-                    .dateField('🎁 Trial ends', subscription.trialEnd);
-            }
+            subscriptionTrial(subscription, description);
 
             // Seat information (if applicable)
             if (subscription.seats) {
@@ -280,7 +266,11 @@ export function createAlertTemplates({
                     subscription.amount,
                     true,
                     subscription.recurringInterval
-                )
+                );
+
+            subscriptionTrial(subscription, description);
+
+            description
                 .dateField(
                     'Current period start',
                     subscription.currentPeriodStart
@@ -324,7 +314,11 @@ export function createAlertTemplates({
                     true,
                     subscription.recurringInterval
                 )
-                .separator()
+                .separator();
+
+            subscriptionTrial(subscription, description);
+
+            description
                 .dateField(
                     'Current period start',
                     subscription.currentPeriodStart
@@ -392,7 +386,11 @@ export function createAlertTemplates({
                     subscription.amount,
                     true,
                     subscription.recurringInterval
-                )
+                );
+
+            subscriptionTrial(subscription, description);
+
+            description
                 .separator()
                 .dateField('Started on', subscription.startedAt);
 
@@ -442,7 +440,12 @@ export function createAlertTemplates({
             })
                 .productInfo(subscription.product)
                 .separator()
-                .field('Status', subscription.status.toUpperCase(), 'code')
+                .field('Status', subscription.status.toUpperCase(), 'code');
+
+            subscriptionTrial(subscription, description);
+
+            description
+                .separator()
                 .dateField('Started on', subscription.startedAt);
 
             if (subscription.endsAt) {
@@ -495,7 +498,11 @@ export function createAlertTemplates({
                     subscription.amount,
                     true,
                     subscription.recurringInterval
-                )
+                );
+
+            subscriptionTrial(subscription, description);
+
+            description
                 .separator()
                 .dateField(
                     'Current period start',
@@ -960,4 +967,36 @@ export function createAlertTemplates({
             };
         },
     };
+}
+
+function subscriptionTrial(
+    subscription: Subscription,
+    description: AlertDescriptionBuilder
+): void {
+    if (
+        subscription.status === 'trialing' &&
+        subscription.trialStart &&
+        subscription.trialEnd
+    ) {
+        const duration = formatDuration(
+            intervalToDuration({
+                start: subscription.trialStart,
+                end: endOfDay(subscription.trialEnd),
+            }),
+            {
+                zero: false,
+                format: ['years', 'months', 'weeks', 'days'],
+            }
+        );
+
+        description
+            .separator()
+            .field(
+                '🎁 Trial',
+                `${duration} (until ${format(
+                    subscription.trialEnd,
+                    'MMM d, yyyy'
+                )})`
+            );
+    }
 }
