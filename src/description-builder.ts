@@ -1,6 +1,11 @@
 import { format } from 'date-fns';
 import { getProductLink, getCountryFlag, getCustomerLink } from './utils';
-import { PolarAlertsConfig } from './types';
+import {
+    $PolarAlertsCustomerMetadata,
+    DeviceType,
+    PolarAlertsConfig,
+    PolarAlertsCustomerMetadata,
+} from './types';
 import type { Product } from '@polar-sh/sdk/models/components/product.js';
 import type { OrderProduct } from '@polar-sh/sdk/models/components/orderproduct.js';
 import type { Customer } from '@polar-sh/sdk/models/components/customer.js';
@@ -201,7 +206,27 @@ export class AlertDescriptionBuilder {
         email?: string | null;
         billingAddress?: Customer['billingAddress'];
         createdAt?: Date;
+        metadata?: object;
     }): this {
+        const metadataResult = $PolarAlertsCustomerMetadata.safeParse(
+            customer.metadata
+        );
+
+        const metadata: PolarAlertsCustomerMetadata = metadataResult.success
+            ? metadataResult.data
+            : {};
+
+        const deviceEmoji = metadata.deviceType
+            ? DEVICE_EMOJIS[metadata.deviceType]
+            : '';
+
+        const deviceString = metadata.deviceType
+            ? `${deviceEmoji ? deviceEmoji + ' ' : ''}${
+                  metadata.deviceType.charAt(0).toUpperCase() +
+                  metadata.deviceType.slice(1)
+              }`
+            : '';
+
         const country = customer.billingAddress?.country;
         const flag = country ? getCountryFlag(country) : '';
 
@@ -210,8 +235,16 @@ export class AlertDescriptionBuilder {
         )}\n\`${customer.email}\``;
 
         if (customer.createdAt) {
-            section += `\n*Created* - \`${format(customer.createdAt, 'PPP')}\``;
+            section += `\n\n*Created* - \`${format(
+                customer.createdAt,
+                'PPP'
+            )}\``;
         }
+
+        if (deviceString) {
+            section += `\n*Device* - \`${deviceString}\``;
+        }
+
         section += '\n';
 
         section += `\n🔗 [View Customer](${getCustomerLink(
@@ -236,6 +269,12 @@ export class AlertDescriptionBuilder {
         return sections.join('\n');
     }
 }
+
+const DEVICE_EMOJIS: Record<DeviceType, string> = {
+    mobile: '📱',
+    tablet: '🔳',
+    desktop: '🖥️',
+};
 
 function isFixedDiscount(
     discount: Discount | NonNullable<Checkout['discount']>

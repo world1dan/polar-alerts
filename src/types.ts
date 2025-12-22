@@ -1,7 +1,20 @@
+import * as z from 'zod/v4';
 import { TelegramAlertsConfig } from './senders';
 import { createAlertTemplates } from './templates';
 
 export type EventType = keyof ReturnType<typeof createAlertTemplates>;
+
+export const $DeviceType = z.enum(['mobile', 'tablet', 'desktop']);
+
+export type DeviceType = z.infer<typeof $DeviceType>;
+
+export const $PolarAlertsCustomerMetadata = z.object({
+    deviceType: $DeviceType.optional(),
+});
+
+export type PolarAlertsCustomerMetadata = z.infer<
+    typeof $PolarAlertsCustomerMetadata
+>;
 
 export interface PolarAlertsConfig {
     /** Your Polar server environment. Used to construct dashboard links. */

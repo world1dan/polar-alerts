@@ -31,6 +31,7 @@ export function createAlertTemplates({
         }: {
             data: Checkout;
         }) => {
+            checkout.metadata;
             const description = new AlertDescriptionBuilder({
                 config,
                 escapeMarkdown,
@@ -541,7 +542,6 @@ export function createAlertTemplates({
                 .productInfo(order.product)
                 .separator()
                 .field('Status', order.status.toUpperCase())
-                .field('Billing reason', order.billingReason.toUpperCase())
                 .dateField('Created on', order.createdAt)
                 .separator()
                 .moneyField('🔙 Refunded Amount', order.refundedAmount)
@@ -565,9 +565,12 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null
+                    order.taxAmount !== null && order.taxAmount > 0
                 )
                 .moneyField('💰 Total', order.totalAmount)
+                .separator()
+                .field('Billing reason', order.billingReason.toUpperCase())
+                .field('Invoice number', order.invoiceNumber, 'code')
                 .separator();
 
             // Subscription info
@@ -580,6 +583,21 @@ export function createAlertTemplates({
 
             description
                 .link('View Order', getOrderLink(config, order.id))
+                .separator();
+
+            if (order.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, order.subscriptionId)
+                );
+            }
+
+            description
+                .link(
+                    'View Checkout',
+                    getCheckoutLink(config, order.checkoutId!),
+                    !!order.checkoutId
+                )
                 .separator()
                 .customerInfo(order.customer);
 
@@ -630,8 +648,6 @@ export function createAlertTemplates({
             description
                 .productInfo(order.product)
                 .separator()
-                .field('Billing reason', order.billingReason.toUpperCase())
-                .separator()
                 .moneyField(
                     '🧾 Subtotal',
                     order.subtotalAmount,
@@ -641,9 +657,16 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null
+                    order.taxAmount !== null && order.taxAmount > 0
                 )
                 .moneyField('💰 Total', order.totalAmount)
+                .separator()
+                .field('Billing reason', order.billingReason.toUpperCase())
+                .field('Invoice number', order.invoiceNumber, 'code')
+                .separator();
+
+            description
+                .link('View Order', getOrderLink(config, order.id))
                 .separator();
 
             // Subscription
@@ -655,7 +678,11 @@ export function createAlertTemplates({
             }
 
             description
-                .link('View Order', getOrderLink(config, order.id))
+                .link(
+                    'View Checkout',
+                    getCheckoutLink(config, order.checkoutId!),
+                    !!order.checkoutId
+                )
                 .separator()
                 .customerInfo(order.customer);
 
@@ -704,11 +731,26 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null
+                    order.taxAmount !== null && order.taxAmount > 0
                 )
                 .moneyField('💰 Total', order.totalAmount)
                 .separator()
                 .link('View Order', getOrderLink(config, order.id))
+                .separator();
+
+            if (order.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, order.subscriptionId)
+                );
+            }
+
+            description
+                .link(
+                    'View Checkout',
+                    getCheckoutLink(config, order.checkoutId!),
+                    !!order.checkoutId
+                )
                 .separator()
                 .customerInfo(order.customer);
 
@@ -762,11 +804,26 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null
+                    order.taxAmount !== null && order.taxAmount > 0
                 )
                 .moneyField('💰 Total', order.totalAmount)
                 .separator()
                 .link('View Order', getOrderLink(config, order.id))
+                .separator();
+
+            if (order.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, order.subscriptionId)
+                );
+            }
+
+            description
+                .link(
+                    'View Checkout',
+                    getCheckoutLink(config, order.checkoutId!),
+                    !!order.checkoutId
+                )
                 .separator()
                 .customerInfo(order.customer);
 
@@ -792,10 +849,17 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax Refund',
                     refund.taxAmount,
-                    refund.taxAmount !== null
+                    refund.taxAmount !== null && refund.taxAmount > 0
                 )
                 .separator()
                 .link('View Order', getOrderLink(config, refund.orderId));
+
+            if (refund.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, refund.subscriptionId)
+                );
+            }
 
             return {
                 title: '🔙🆕 Refund Created',
@@ -825,7 +889,7 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax Refund',
                     refund.taxAmount,
-                    refund.taxAmount !== null
+                    refund.taxAmount !== null && refund.taxAmount > 0
                 )
                 .separator()
                 .link('View Order', getOrderLink(config, refund.orderId));
