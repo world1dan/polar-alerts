@@ -186,7 +186,9 @@ export class AlertDescriptionBuilder {
     hashtags(hashtags: string[], condition: boolean = true): this {
         if (condition && hashtags && hashtags.length > 0) {
             const formattedTags = hashtags
-                .map((tag) => (tag.startsWith('#') ? tag : `#${tag}`))
+                .map((tag) =>
+                    this.escapeMarkdown(tag.startsWith('#') ? tag : `#${tag}`)
+                )
                 .join(' ');
             this.sections.push(formattedTags);
         }
