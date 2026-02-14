@@ -53,14 +53,21 @@ export class AlertDescriptionBuilder {
         format: FieldFormat = 'code'
     ): this {
         if (value) {
-            const escaped = this.escapeMarkdown(value);
-            const formatted =
-                format === 'code'
-                    ? `\`${escaped}\``
-                    : format === 'italic'
-                    ? `*${escaped}*`
-                    : escaped;
-            this.sections.push(`*${label}* - ${formatted}`);
+            const escapedLabel = this.escapeMarkdown(label);
+
+            let formattedValue: string;
+            if (format === 'code') {
+                // Inside backticks, underscores don't need escaping.
+                // We only escape the backtick itself.
+                const safeCodeValue = value.replace(/`/g, '\\`');
+                formattedValue = `\`${safeCodeValue}\``;
+            } else if (format === 'italic') {
+                formattedValue = `_${this.escapeMarkdown(value)}_`;
+            } else {
+                formattedValue = this.escapeMarkdown(value);
+            }
+
+            this.sections.push(`*${escapedLabel}* - ${formattedValue}`);
         }
         return this;
     }
