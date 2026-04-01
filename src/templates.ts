@@ -347,6 +347,12 @@ export function createAlertTemplates({
         }: {
             data: Subscription;
         }) => {
+            // Avoid sending duplicate notifications for subscriptions transitioning from "Ends on period end" to "Canceled".
+            // Only send an alert when the user initiates the cancellation, not when the cancellation is automatically finalized.
+            if (subscription.status === 'canceled') {
+                return;
+            }
+
             const description = new AlertDescriptionBuilder({
                 config,
                 escapeMarkdown,
