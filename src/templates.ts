@@ -101,6 +101,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['checkout', 'created'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -171,6 +172,7 @@ export function createAlertTemplates({
                             : 'updated',
                     ])
                     .build(),
+                silent: true,
             };
         },
 
@@ -239,6 +241,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['subscription', 'created'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -291,6 +294,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['subscription', 'past_due'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -339,6 +343,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['subscription', 'active'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -433,6 +438,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['subscription', 'canceled'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -482,6 +488,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['subscription', 'revoked'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -531,6 +538,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['subscription', 'uncanceled'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -637,7 +645,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['order', 'created'])
                     .build(),
-                silent: false,
+                silent: true,
             };
         },
 
@@ -698,7 +706,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['order', 'paid'])
                     .build(),
-                silent: order.billingReason === 'subscription_cycle',
+                silent: false,
             };
         },
 
@@ -766,6 +774,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['order', 'refunded'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -839,6 +848,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['order', 'updated'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -873,6 +883,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['refund', 'created'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -906,6 +917,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['refund', 'updated'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -954,6 +966,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['customer', 'created'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -1006,6 +1019,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['customer', 'updated'])
                     .build(),
+                silent: true,
             };
         },
 
@@ -1034,6 +1048,7 @@ export function createAlertTemplates({
                     .separator()
                     .hashtags(['customer', 'deleted'])
                     .build(),
+                silent: true,
             };
         },
     };
