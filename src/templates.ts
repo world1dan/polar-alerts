@@ -45,15 +45,29 @@ export function createAlertTemplates({
                 .moneyField(
                     '🧾 Subtotal',
                     checkout.amount,
-                    checkout.amount !== checkout.totalAmount
+                    checkout.amount !== checkout.totalAmount,
+                    undefined,
+                    checkout.currency
                 )
-                .discountInfo(checkout.discount, checkout.discountAmount)
+                .discountInfo(
+                    checkout.discount,
+                    checkout.discountAmount,
+                    checkout.currency
+                )
                 .moneyField(
                     '🏛️ Tax',
                     checkout.taxAmount ?? 0,
-                    checkout.taxAmount !== null && checkout.taxAmount > 0
+                    checkout.taxAmount !== null && checkout.taxAmount > 0,
+                    undefined,
+                    checkout.currency
                 )
-                .moneyField('💰 Total', checkout.totalAmount)
+                .moneyField(
+                    '💰 Total',
+                    checkout.totalAmount,
+                    true,
+                    undefined,
+                    checkout.currency
+                )
                 .separator()
                 .link('View Checkout', getCheckoutLink(config, checkout.id));
 
@@ -123,15 +137,29 @@ export function createAlertTemplates({
                 .moneyField(
                     '🧾 Subtotal',
                     checkout.amount,
-                    checkout.amount !== checkout.totalAmount
+                    checkout.amount !== checkout.totalAmount,
+                    undefined,
+                    checkout.currency
                 )
-                .discountInfo(checkout.discount, checkout.discountAmount)
+                .discountInfo(
+                    checkout.discount,
+                    checkout.discountAmount,
+                    checkout.currency
+                )
                 .moneyField(
                     '🏛️ Tax',
                     checkout.taxAmount ?? 0,
-                    checkout.taxAmount !== null && checkout.taxAmount > 0
+                    checkout.taxAmount !== null && checkout.taxAmount > 0,
+                    undefined,
+                    checkout.currency
                 )
-                .moneyField('💰 Total', checkout.totalAmount)
+                .moneyField(
+                    '💰 Total',
+                    checkout.totalAmount,
+                    true,
+                    undefined,
+                    checkout.currency
+                )
                 .separator()
                 .link('View Checkout', getCheckoutLink(config, checkout.id));
 
@@ -190,12 +218,17 @@ export function createAlertTemplates({
                 .field('Status', subscription.status.toUpperCase())
                 .dateField('Started on', subscription.startedAt)
                 .separator()
-                .discountInfo(subscription.discount)
+                .discountInfo(
+                    subscription.discount,
+                    undefined,
+                    subscription.currency
+                )
                 .moneyField(
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval
+                    subscription.recurringInterval,
+                    subscription.currency
                 );
 
             subscriptionTrial(subscription, description);
@@ -264,12 +297,17 @@ export function createAlertTemplates({
                 .field('Status', subscription.status.toUpperCase(), 'code')
                 .dateField('Started on', subscription.startedAt)
                 .separator()
-                .discountInfo(subscription.discount)
+                .discountInfo(
+                    subscription.discount,
+                    undefined,
+                    subscription.currency
+                )
                 .moneyField(
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval
+                    subscription.recurringInterval,
+                    subscription.currency
                 );
 
             subscriptionTrial(subscription, description);
@@ -312,12 +350,17 @@ export function createAlertTemplates({
                 .field('Status', subscription.status.toUpperCase(), 'code')
                 .dateField('Started on', subscription.startedAt)
                 .separator()
-                .discountInfo(subscription.discount)
+                .discountInfo(
+                    subscription.discount,
+                    undefined,
+                    subscription.currency
+                )
                 .moneyField(
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval
+                    subscription.recurringInterval,
+                    subscription.currency
                 )
                 .separator();
 
@@ -392,12 +435,17 @@ export function createAlertTemplates({
 
             description
                 .separator()
-                .discountInfo(subscription.discount)
+                .discountInfo(
+                    subscription.discount,
+                    undefined,
+                    subscription.currency
+                )
                 .moneyField(
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval
+                    subscription.recurringInterval,
+                    subscription.currency
                 );
 
             subscriptionTrial(subscription, description);
@@ -467,12 +515,17 @@ export function createAlertTemplates({
 
             description
                 .separator()
-                .discountInfo(subscription.discount)
+                .discountInfo(
+                    subscription.discount,
+                    undefined,
+                    subscription.currency
+                )
                 .moneyField(
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval
+                    subscription.recurringInterval,
+                    subscription.currency
                 )
                 .separator()
                 .link(
@@ -506,12 +559,17 @@ export function createAlertTemplates({
                 .field('Status', subscription.status.toUpperCase(), 'code')
                 .dateField('Started on', subscription.startedAt)
                 .separator()
-                .discountInfo(subscription.discount)
+                .discountInfo(
+                    subscription.discount,
+                    undefined,
+                    subscription.currency
+                )
                 .moneyField(
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval
+                    subscription.recurringInterval,
+                    subscription.currency
                 );
 
             subscriptionTrial(subscription, description);
@@ -558,30 +616,54 @@ export function createAlertTemplates({
                 .field('Status', order.status.toUpperCase())
                 .dateField('Created on', order.createdAt)
                 .separator()
-                .moneyField('🔙 Refunded Amount', order.refundedAmount)
+                .moneyField(
+                    '🔙 Refunded Amount',
+                    order.refundedAmount,
+                    true,
+                    undefined,
+                    order.currency
+                )
                 .moneyField(
                     '🏛️ Refunded Tax',
                     order.refundedTaxAmount,
-                    order.refundedTaxAmount !== 0
+                    order.refundedTaxAmount !== 0,
+                    undefined,
+                    order.currency
                 )
                 .moneyField(
                     '💳 Platform Fee',
                     order.platformFeeAmount,
-                    order.platformFeeAmount !== 0
+                    order.platformFeeAmount !== 0,
+                    undefined,
+                    order.platformFeeCurrency ?? order.currency
                 )
                 .separator()
                 .moneyField(
                     '🧾 Subtotal',
                     order.subtotalAmount,
-                    order.subtotalAmount !== order.totalAmount
+                    order.subtotalAmount !== order.totalAmount,
+                    undefined,
+                    order.currency
                 )
-                .discountInfo(order.discount, order.discountAmount)
+                .discountInfo(
+                    order.discount,
+                    order.discountAmount,
+                    order.currency
+                )
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0
+                    order.taxAmount !== null && order.taxAmount > 0,
+                    undefined,
+                    order.currency
                 )
-                .moneyField('💰 Total', order.totalAmount)
+                .moneyField(
+                    '💰 Total',
+                    order.totalAmount,
+                    true,
+                    undefined,
+                    order.currency
+                )
                 .separator()
                 .field('Billing reason', order.billingReason.toUpperCase())
                 .field('Invoice number', order.invoiceNumber, 'code')
@@ -665,15 +747,29 @@ export function createAlertTemplates({
                 .moneyField(
                     '🧾 Subtotal',
                     order.subtotalAmount,
-                    order.subtotalAmount !== order.totalAmount
+                    order.subtotalAmount !== order.totalAmount,
+                    undefined,
+                    order.currency
                 )
-                .discountInfo(order.discount, order.discountAmount)
+                .discountInfo(
+                    order.discount,
+                    order.discountAmount,
+                    order.currency
+                )
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0
+                    order.taxAmount !== null && order.taxAmount > 0,
+                    undefined,
+                    order.currency
                 )
-                .moneyField('💰 Total', order.totalAmount)
+                .moneyField(
+                    '💰 Total',
+                    order.totalAmount,
+                    true,
+                    undefined,
+                    order.currency
+                )
                 .separator()
                 .field('Billing reason', order.billingReason.toUpperCase())
                 .field('Invoice number', order.invoiceNumber, 'code')
@@ -723,31 +819,55 @@ export function createAlertTemplates({
                 .separator()
                 .field('Status', order.status.toUpperCase(), 'code')
                 .separator()
-                .moneyField('🔙 Refunded Amount', order.refundedAmount)
+                .moneyField(
+                    '🔙 Refunded Amount',
+                    order.refundedAmount,
+                    true,
+                    undefined,
+                    order.currency
+                )
                 .moneyField(
                     '🏛️ Refunded Tax',
                     order.refundedTaxAmount,
-                    order.refundedTaxAmount !== 0
+                    order.refundedTaxAmount !== 0,
+                    undefined,
+                    order.currency
                 )
                 .moneyField(
                     '💳 Platform Fee',
                     order.platformFeeAmount,
-                    order.platformFeeAmount !== 0
+                    order.platformFeeAmount !== 0,
+                    undefined,
+                    order.platformFeeCurrency ?? order.currency
                 )
                 .separator()
                 .custom('Original amount:')
                 .moneyField(
                     '🧾 Subtotal',
                     order.subtotalAmount,
-                    order.subtotalAmount !== order.totalAmount
+                    order.subtotalAmount !== order.totalAmount,
+                    undefined,
+                    order.currency
                 )
-                .discountInfo(order.discount, order.discountAmount)
+                .discountInfo(
+                    order.discount,
+                    order.discountAmount,
+                    order.currency
+                )
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0
+                    order.taxAmount !== null && order.taxAmount > 0,
+                    undefined,
+                    order.currency
                 )
-                .moneyField('💰 Total', order.totalAmount)
+                .moneyField(
+                    '💰 Total',
+                    order.totalAmount,
+                    true,
+                    undefined,
+                    order.currency
+                )
                 .separator()
                 .link('View Order', getOrderLink(config, order.id))
                 .separator();
@@ -802,26 +922,44 @@ export function createAlertTemplates({
                 .moneyField(
                     '🔙 Refunded Amount',
                     order.refundedAmount,
-                    order.refundedAmount !== 0
+                    order.refundedAmount !== 0,
+                    undefined,
+                    order.currency
                 )
                 .moneyField(
                     '🏛️ Refunded Tax',
                     order.refundedTaxAmount,
-                    order.refundedTaxAmount !== 0
+                    order.refundedTaxAmount !== 0,
+                    undefined,
+                    order.currency
                 )
                 .separator()
                 .moneyField(
                     '🧾 Subtotal',
                     order.subtotalAmount,
-                    order.subtotalAmount !== order.totalAmount
+                    order.subtotalAmount !== order.totalAmount,
+                    undefined,
+                    order.currency
                 )
-                .discountInfo(order.discount, order.discountAmount)
+                .discountInfo(
+                    order.discount,
+                    order.discountAmount,
+                    order.currency
+                )
                 .moneyField(
                     '🏛️ Tax',
                     order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0
+                    order.taxAmount !== null && order.taxAmount > 0,
+                    undefined,
+                    order.currency
                 )
-                .moneyField('💰 Total', order.totalAmount)
+                .moneyField(
+                    '💰 Total',
+                    order.totalAmount,
+                    true,
+                    undefined,
+                    order.currency
+                )
                 .separator()
                 .link('View Order', getOrderLink(config, order.id))
                 .separator();
@@ -861,11 +999,19 @@ export function createAlertTemplates({
                 .field('Reason', refund.reason.toUpperCase())
                 .dateField('Created on', refund.createdAt)
                 .separator()
-                .moneyField('🔙 Refund Amount', refund.amount)
+                .moneyField(
+                    '🔙 Refund Amount',
+                    refund.amount,
+                    true,
+                    undefined,
+                    refund.currency
+                )
                 .moneyField(
                     '🏛️ Tax Refund',
                     refund.taxAmount,
-                    refund.taxAmount !== null && refund.taxAmount > 0
+                    refund.taxAmount !== null && refund.taxAmount > 0,
+                    undefined,
+                    refund.currency
                 )
                 .separator()
                 .link('View Order', getOrderLink(config, refund.orderId));
@@ -902,11 +1048,19 @@ export function createAlertTemplates({
 
             description
                 .separator()
-                .moneyField('🔙 Refund Amount', refund.amount)
+                .moneyField(
+                    '🔙 Refund Amount',
+                    refund.amount,
+                    true,
+                    undefined,
+                    refund.currency
+                )
                 .moneyField(
                     '🏛️ Tax Refund',
                     refund.taxAmount,
-                    refund.taxAmount !== null && refund.taxAmount > 0
+                    refund.taxAmount !== null && refund.taxAmount > 0,
+                    undefined,
+                    refund.currency
                 )
                 .separator()
                 .link('View Order', getOrderLink(config, refund.orderId));

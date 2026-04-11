@@ -87,16 +87,34 @@ export class AlertDescriptionBuilder {
         label: string,
         amountInCents: number,
         condition: any = true,
-        recurringInterval?: string | null
+        recurringInterval?: string | null,
+        currency?: string | null
     ): this {
         if (condition) {
-            let text = `*${label}* - *$${amountInCents / 100}*`;
+            const formatted = this.formatMoney(amountInCents, currency);
+            let text = `*${label}* - *${formatted}*`;
             if (recurringInterval) {
                 text += `/${this.escapeMarkdown(recurringInterval)}`;
             }
             this.sections.push(text);
         }
         return this;
+    }
+
+    private formatMoney(amountInCents: number, currency?: string | null): string {
+        const code = (
+            currency ??
+            this.config.currency ??
+            'usd'
+        ).toUpperCase();
+        try {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: code,
+            }).format(amountInCents / 100);
+        } catch {
+            return `${code} ${(amountInCents / 100).toFixed(2)}`;
+        }
     }
 
     productInfo(product: Product | CheckoutProduct | OrderProduct): this {
@@ -115,8 +133,10 @@ export class AlertDescriptionBuilder {
         if (price !== undefined) {
             if (price.amountType === 'free') {
                 text += ` (free)`;
-            } else {
-                text += ` (*$${price.priceAmount / 100}*`;
+            } else if (price.amountType === 'fixed') {
+                const ccy =
+                    'priceCurrency' in price ? price.priceCurrency : undefined;
+                text += ` (*${this.formatMoney(price.priceAmount, ccy)}*`;
                 if (product.recurringInterval) {
                     text += `/${this.escapeMarkdown(
                         product.recurringInterval
@@ -140,7 +160,8 @@ export class AlertDescriptionBuilder {
 
     discountInfo(
         discount: Discount | Checkout['discount'] | undefined | null,
-        discountAmount?: number
+        discountAmount?: number,
+        currency?: string | null
     ): this {
         if (!discount) {
             return this;
@@ -156,7 +177,10 @@ export class AlertDescriptionBuilder {
 
         // Amount
         if (isFixedDiscount(discount)) {
-            text += `\n       - *$${discount.amount / 100}* off`;
+            text += `\n       - *${this.formatMoney(
+                discount.amount,
+                discount.currency
+            )}* off`;
         }
 
         if (isPercentageDiscount(discount)) {
@@ -183,7 +207,10 @@ export class AlertDescriptionBuilder {
 
         // Actual discount amount applied (if provided)
         if (discountAmount !== undefined && discountAmount > 0) {
-            text += `\n       - *Savings* - *-$${discountAmount / 100}*`;
+            text += `\n       - *Savings* - *${this.formatMoney(
+                -discountAmount,
+                currency
+            )}*`;
         }
 
         this.sections.push(text);

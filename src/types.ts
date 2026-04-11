@@ -24,6 +24,14 @@ export interface PolarAlertsConfig {
      */
     polarOrganizationSlug: string;
     /**
+     * Default ISO 4217 currency code (e.g. `usd`, `eur`) for formatting monetary amounts when a
+     * webhook payload does not include a currency. Polar sends `currency` on orders, checkouts,
+     * subscriptions, and refunds; this value is mainly a fallback.
+     *
+     * @default 'usd'
+     */
+    currency?: string;
+    /**
      * Enable/disable specific event types
      */
     events?: Record<EventType, boolean> | 'all';
