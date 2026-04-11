@@ -101,16 +101,16 @@ export class AlertDescriptionBuilder {
         return this;
     }
 
-    private formatMoney(amountInCents: number, currency?: string | null): string {
-        const code = (
-            currency ??
-            this.config.currency ??
-            'usd'
-        ).toUpperCase();
+    private formatMoney(
+        amountInCents: number,
+        currency?: string | null
+    ): string {
+        const code = (currency ?? this.config.currency ?? 'usd').toUpperCase();
         try {
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: code,
+                minimumFractionDigits: 0,
             }).format(amountInCents / 100);
         } catch {
             return `${code} ${(amountInCents / 100).toFixed(2)}`;
