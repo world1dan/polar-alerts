@@ -11,6 +11,7 @@ export type DeviceType = z.infer<typeof $DeviceType>
 
 export const $PolarAlertsCustomerMetadata = z.object({
     deviceType: $DeviceType.optional(),
+    referrer: z.string().optional(),
 })
 
 export type PolarAlertsCustomerMetadata = z.infer<

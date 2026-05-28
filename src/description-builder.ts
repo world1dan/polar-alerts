@@ -262,6 +262,8 @@ export class AlertDescriptionBuilder {
               }`
             : ''
 
+        const referrer = metadata.referrer
+
         const country = customer.billingAddress?.country
         const flag = country ? getCountryFlag(country) : ''
 
@@ -275,6 +277,10 @@ export class AlertDescriptionBuilder {
 
         if (deviceString) {
             section += `\n*Device* - \`${deviceString}\``
+        }
+
+        if (referrer) {
+            section += `\n*Referrer* - 🌐 [${formatReferrer(referrer)}](${referrer})`
         }
 
         section += '\n'
@@ -306,6 +312,15 @@ const DEVICE_EMOJIS: Record<DeviceType, string> = {
     mobile: '📱',
     tablet: '🔳',
     desktop: '🖥️',
+}
+
+function formatReferrer(referrer: string): string {
+    try {
+        const url = new URL(referrer)
+        return url.hostname
+    } catch {
+        return referrer
+    }
 }
 
 function isFixedDiscount(

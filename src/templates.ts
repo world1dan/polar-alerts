@@ -422,13 +422,13 @@ export function createAlertTemplates({
             // Cancellation reason
             if (subscription.customerCancellationReason) {
                 description.field(
-                    '❔ Cancellation reason',
+                    'Cancellation reason',
                     subscription.customerCancellationReason.toUpperCase(),
                 )
             }
             if (subscription.customerCancellationComment) {
                 description.field(
-                    '💬 Comment',
+                    'Comment',
                     subscription.customerCancellationComment,
                 )
             }
