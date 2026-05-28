@@ -32,11 +32,11 @@
         "node-telegram-bot-api": "^0.67.0"
     },
     "peerDependencies": {
-        "@polar-sh/sdk": ">=0.46.7",
+        "@polar-sh/sdk": ">=0.47.1",
         "zod": "^4.3.6"
     },
     "devDependencies": {
-        "@polar-sh/sdk": "^0.47.0",
+        "@polar-sh/sdk": "^0.47.1",
         "@types/node": "^24.12.2",
         "@types/node-telegram-bot-api": "^0.64.14",
         "typescript": "^6.0.2",
@@ -47,6 +47,6 @@
         "url": "git+https://github.com/world1dan/polar-alerts.git"
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=20"
     }
 }
