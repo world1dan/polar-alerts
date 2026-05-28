@@ -1,3 +1,3 @@
-export { PolarAlertsClient } from './webhook-handler';
+export { PolarAlertsClient } from "./webhook-handler";
 
-export type { PolarAlertsConfig } from './types';
+export type { PolarAlertsConfig } from "./types";
