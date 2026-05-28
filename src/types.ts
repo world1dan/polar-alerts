@@ -50,5 +50,5 @@ export interface PolarAlertsConfig {
      * [Cloudflare](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil)
      * for more details.
      */
-    waitUntil?: (promise: Promise<unknown>) => Promise<void>
+    waitUntil?: (promise: Promise<unknown>) => void | undefined
 }

@@ -1,6 +1,6 @@
 {
     "name": "polar-alerts",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "description": "Automatic Telegram alerts for Polar events with built-in webhook handling",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
