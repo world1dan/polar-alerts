@@ -22,6 +22,9 @@ const DEFAULT_EVENT_CONFIG: Record<EventType, boolean> = {
     'customer.created': false,
     'customer.updated': false,
     'customer.deleted': false,
+    'customer_seat.assigned': true,
+    'customer_seat.claimed': true,
+    'customer_seat.revoked': true,
 }
 
 export class PolarAlertsClient {

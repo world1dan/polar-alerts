@@ -1,5 +1,6 @@
 import type { Checkout } from '@polar-sh/sdk/models/components/checkout.js'
 import type { Customer } from '@polar-sh/sdk/models/components/customer.js'
+import type { CustomerSeat } from '@polar-sh/sdk/models/components/customerseat.js'
 import type { Order } from '@polar-sh/sdk/models/components/order.js'
 import type { Refund } from '@polar-sh/sdk/models/components/refund.js'
 import type { Subscription } from '@polar-sh/sdk/models/components/subscription.js'
@@ -232,13 +233,7 @@ export function createAlertTemplates({
                 )
 
             subscriptionTrial(subscription, description)
-
-            // Seat information (if applicable)
-            if (subscription.seats) {
-                description
-                    .separator()
-                    .field('👥 Seats', subscription.seats.toString())
-            }
+            subscriptionSeats(subscription, description)
 
             description
                 .separator()
@@ -311,6 +306,7 @@ export function createAlertTemplates({
                 )
 
             subscriptionTrial(subscription, description)
+            subscriptionSeats(subscription, description)
 
             description
                 .dateField(
@@ -365,6 +361,7 @@ export function createAlertTemplates({
                 .separator()
 
             subscriptionTrial(subscription, description)
+            subscriptionSeats(subscription, description)
 
             description
                 .dateField(
@@ -449,6 +446,7 @@ export function createAlertTemplates({
                 )
 
             subscriptionTrial(subscription, description)
+            subscriptionSeats(subscription, description)
 
             description
                 .separator()
@@ -504,6 +502,7 @@ export function createAlertTemplates({
                 .field('Status', subscription.status.toUpperCase(), 'code')
 
             subscriptionTrial(subscription, description)
+            subscriptionSeats(subscription, description)
 
             description
                 .separator()
@@ -573,6 +572,7 @@ export function createAlertTemplates({
                 )
 
             subscriptionTrial(subscription, description)
+            subscriptionSeats(subscription, description)
 
             description
                 .separator()
@@ -595,6 +595,155 @@ export function createAlertTemplates({
                 description: await description
                     .separator()
                     .hashtags(['subscription', 'uncanceled'])
+                    .build(),
+                silent: true,
+            }
+        },
+
+        ['customer_seat.assigned']: async ({
+            data: seat,
+        }: {
+            data: CustomerSeat
+        }) => {
+            const description = new AlertDescriptionBuilder({
+                config,
+                escapeMarkdown,
+            })
+                .field('Status', seat.status.toUpperCase())
+                .dateField('Assigned on', seat.createdAt)
+                .dateField('Invitation expires', seat.invitationTokenExpiresAt)
+
+            if (seat.member) {
+                description.separator().memberInfo(seat.member)
+            } else if (seat.email ?? seat.customerEmail) {
+                description
+                    .separator()
+                    .field('Email', seat.email ?? seat.customerEmail)
+            }
+
+            description.separator()
+
+            if (seat.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, seat.subscriptionId),
+                )
+            }
+            if (seat.orderId) {
+                description.link(
+                    'View Order',
+                    getOrderLink(config, seat.orderId),
+                )
+            }
+
+            if (
+                seat.seatMetadata &&
+                Object.keys(seat.seatMetadata).length > 0
+            ) {
+                description
+                    .separator()
+                    .field(
+                        'Metadata',
+                        JSON.stringify(seat.seatMetadata, null, 2),
+                        'code',
+                    )
+            }
+
+            return {
+                title: '💺🆕 Seat Assigned',
+                description: await description
+                    .separator()
+                    .hashtags(['seat', 'assigned'])
+                    .build(),
+                silent: true,
+            }
+        },
+
+        ['customer_seat.claimed']: async ({
+            data: seat,
+        }: {
+            data: CustomerSeat
+        }) => {
+            const description = new AlertDescriptionBuilder({
+                config,
+                escapeMarkdown,
+            })
+                .field('Status', seat.status.toUpperCase())
+                .dateField('Claimed on', seat.claimedAt)
+
+            if (seat.member) {
+                description.separator().memberInfo(seat.member)
+            } else if (seat.email ?? seat.customerEmail) {
+                description
+                    .separator()
+                    .field('Email', seat.email ?? seat.customerEmail)
+            }
+
+            description.separator()
+
+            if (seat.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, seat.subscriptionId),
+                )
+            }
+            if (seat.orderId) {
+                description.link(
+                    'View Order',
+                    getOrderLink(config, seat.orderId),
+                )
+            }
+
+            return {
+                title: '💺✅ Seat Claimed',
+                description: await description
+                    .separator()
+                    .hashtags(['seat', 'claimed'])
+                    .build(),
+                silent: false,
+            }
+        },
+
+        ['customer_seat.revoked']: async ({
+            data: seat,
+        }: {
+            data: CustomerSeat
+        }) => {
+            const description = new AlertDescriptionBuilder({
+                config,
+                escapeMarkdown,
+            })
+                .field('Status', seat.status.toUpperCase())
+                .dateField('Revoked on', seat.revokedAt)
+
+            if (seat.member) {
+                description.separator().memberInfo(seat.member)
+            } else if (seat.email ?? seat.customerEmail) {
+                description
+                    .separator()
+                    .field('Email', seat.email ?? seat.customerEmail)
+            }
+
+            description.separator()
+
+            if (seat.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, seat.subscriptionId),
+                )
+            }
+            if (seat.orderId) {
+                description.link(
+                    'View Order',
+                    getOrderLink(config, seat.orderId),
+                )
+            }
+
+            return {
+                title: '💺🚫 Seat Revoked',
+                description: await description
+                    .separator()
+                    .hashtags(['seat', 'revoked'])
                     .build(),
                 silent: true,
             }
@@ -1205,6 +1354,17 @@ export function createAlertTemplates({
                 silent: true,
             }
         },
+    }
+}
+
+function subscriptionSeats(
+    subscription: Subscription,
+    description: AlertDescriptionBuilder,
+): void {
+    // Only surface seat count once there's more than one seat purchased —
+    // a single-seat subscription isn't meaningfully "team" billing.
+    if (subscription.seats && subscription.seats > 1) {
+        description.separator().field('👥 Seats', subscription.seats.toString())
     }
 }
 

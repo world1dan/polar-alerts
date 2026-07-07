@@ -295,6 +295,35 @@ export class AlertDescriptionBuilder {
         return this
     }
 
+    memberInfo(member: {
+        id: string
+        name?: string | null
+        email: string
+        externalId?: string | null
+        role?: string
+    }): this {
+        let section = `${this.escapeMarkdown(
+            member.name ?? member.email,
+        )}\n\`${member.email}\``
+
+        if (member.role) {
+            section += `\n*Role* - \`${member.role.toUpperCase()}\``
+        }
+
+        if (member.email) {
+            section += `\n*Email* - \`${this.escapeMarkdown(member.email)}\``
+        }
+
+        if (member.externalId) {
+            section += `\n*External ID* - \`${this.escapeMarkdown(
+                member.externalId,
+            )}\``
+        }
+
+        this.sections.push(section)
+        return this
+    }
+
     async build(): Promise<string> {
         const sectionPromises = this.sections.map(async (section) => {
             if (typeof section === 'string') {
