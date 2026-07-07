@@ -45,13 +45,12 @@ export class TelegramAlertSender implements AlertsSender {
             try {
                 await bot.sendMessage(this.config.chatId, message.trim(), {
                     parse_mode: 'Markdown',
-                    disable_web_page_preview: true,
-                    disable_notification:
-                        awaitedParams.silent ?? this.config.silent,
                     message_thread_id: Number(this.config.threadId),
                     link_preview_options: {
                         is_disabled: true,
                     },
+                    disable_notification:
+                        awaitedParams.silent ?? this.config.silent,
                 })
             } catch (error) {
                 console.error('Failed to send Telegram alert:', error)

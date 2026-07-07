@@ -32,26 +32,25 @@
     "author": "Daniil Prylepa",
     "license": "MIT",
     "dependencies": {
-        "date-fns": "^4.1.0",
-        "node-telegram-bot-api": "^0.67.0"
+        "date-fns": "^4.4.0",
+        "node-telegram-bot-api": "^1.1.2"
     },
     "peerDependencies": {
-        "@polar-sh/sdk": ">=0.47.1",
+        "@polar-sh/sdk": ">=0.48.1",
         "zod": "^4.3.6"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
-        "@polar-sh/sdk": "^0.47.1",
-        "@types/node": "^24.12.2",
-        "@types/node-telegram-bot-api": "^0.64.14",
-        "eslint": "^10.4.0",
-        "globals": "^17.6.0",
+        "@polar-sh/sdk": "^0.48.1",
+        "@types/node": "^26.1.0",
+        "eslint": "^10.6.0",
+        "globals": "^17.7.0",
         "jiti": "^2.7.0",
-        "prettier": "^3.8.3",
-        "typescript": "^6.0.2",
-        "typescript-eslint": "^8.60.0",
-        "zod": "^4.3.6"
+        "prettier": "^3.9.4",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.63.0",
+        "zod": "^4.4.3"
     },
     "repository": {
         "type": "git",

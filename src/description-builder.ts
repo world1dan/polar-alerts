@@ -332,16 +332,14 @@ function isFixedDiscount(
 function isPercentageDiscount(
     discount: Discount | NonNullable<Checkout['discount']>,
 ): discount is
-    | DiscountPercentageOnceForeverDuration
-    | DiscountPercentageRepeatDuration {
+    DiscountPercentageOnceForeverDuration | DiscountPercentageRepeatDuration {
     return discount.type === 'percentage'
 }
 
 function isOnceForeverDiscount(
     discount: Discount | NonNullable<Checkout['discount']>,
 ): discount is
-    | DiscountFixedOnceForeverDuration
-    | DiscountPercentageOnceForeverDuration {
+    DiscountFixedOnceForeverDuration | DiscountPercentageOnceForeverDuration {
     return discount.duration === 'once'
 }
 
