@@ -1,5 +1,6 @@
 export { PolarAlertsClient } from './webhook-handler'
 export { escapeHtml } from './html'
+export { TelegramApiError } from './senders'
 
 export type {
     EventType,

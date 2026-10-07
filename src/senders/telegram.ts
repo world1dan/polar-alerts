@@ -1,10 +1,15 @@
-import TelegramBot from 'node-telegram-bot-api'
-
 import { escapeHtml, htmlToText } from '../html'
 import { AlertParams, AlertsSender } from './types'
 
+const API_URL = 'https://api.telegram.org'
+
 /** Telegram rejects messages longer than this, counted after the markup is parsed. */
 const MAX_MESSAGE_LENGTH = 4096
+
+// Keep delivery well within Polar's webhook timeout when it isn't run via `waitUntil`
+const REQUEST_TIMEOUT_MS = 10_000
+const MAX_RETRIES_ON_429 = 1
+const MAX_RETRY_AFTER_SECONDS = 5
 
 /**
  * Telegram alert configuration options
@@ -28,12 +33,27 @@ export interface TelegramAlertsConfig {
     silent?: boolean
 }
 
-export class TelegramAlertSender implements AlertsSender {
-    private bot: TelegramBot
-
-    constructor(private config: TelegramAlertsConfig) {
-        this.bot = new TelegramBot(config.botToken)
+/** An error response from the Telegram Bot API. */
+export class TelegramApiError extends Error {
+    constructor(
+        readonly status: number,
+        readonly description: string,
+        readonly retryAfter?: number,
+    ) {
+        super(`Telegram API error ${status}: ${description}`)
+        this.name = 'TelegramApiError'
     }
+}
+
+interface TelegramResponse {
+    ok: boolean
+    result?: unknown
+    description?: string
+    parameters?: { retry_after?: number }
+}
+
+export class TelegramAlertSender implements AlertsSender {
+    constructor(private config: TelegramAlertsConfig) {}
 
     async send(alert: AlertParams): Promise<void> {
         const html = [
@@ -73,15 +93,68 @@ export class TelegramAlertSender implements AlertsSender {
     ): Promise<void> {
         const { threadId } = this.config
 
-        await this.bot.sendMessage(this.config.chatId, text, {
-            ...(parseMode && { parse_mode: parseMode }),
-            ...(threadId != null &&
-                threadId !== '' && { message_thread_id: Number(threadId) }),
-            link_preview_options: {
-                is_disabled: true,
-            },
+        await this.call('sendMessage', {
+            chat_id: this.config.chatId,
+            text,
+            parse_mode: parseMode,
+            message_thread_id:
+                threadId != null && threadId !== ''
+                    ? Number(threadId)
+                    : undefined,
+            link_preview_options: { is_disabled: true },
             disable_notification: silent,
         })
+    }
+
+    private async call(
+        method: string,
+        params: Record<string, unknown>,
+        attempt = 0,
+    ): Promise<unknown> {
+        const response = await fetch(
+            `${API_URL}/bot${this.config.botToken}/${method}`,
+            {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                // `JSON.stringify` drops undefined fields, so unset options aren't sent
+                body: JSON.stringify(params),
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            },
+        )
+
+        let body: TelegramResponse
+        try {
+            body = (await response.json()) as TelegramResponse
+        } catch {
+            // e.g. an HTML error page from a proxy in front of the API
+            throw new TelegramApiError(
+                response.status,
+                response.statusText || 'Invalid response',
+            )
+        }
+
+        if (body.ok) {
+            return body.result
+        }
+
+        const retryAfter = body.parameters?.retry_after
+        if (
+            response.status === 429 &&
+            retryAfter !== undefined &&
+            retryAfter <= MAX_RETRY_AFTER_SECONDS &&
+            attempt < MAX_RETRIES_ON_429
+        ) {
+            await new Promise((resolve) =>
+                setTimeout(resolve, retryAfter * 1000),
+            )
+            return this.call(method, params, attempt + 1)
+        }
+
+        throw new TelegramApiError(
+            response.status,
+            body.description ?? 'Unknown error',
+            retryAfter,
+        )
     }
 }
 
@@ -94,6 +167,7 @@ function toPlainText(html: string): string {
 
 function isEntityParseError(error: unknown): boolean {
     return (
-        error instanceof Error && error.message.includes("can't parse entities")
+        error instanceof TelegramApiError &&
+        error.description.includes("can't parse entities")
     )
 }

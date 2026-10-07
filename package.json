@@ -34,8 +34,7 @@
     "author": "Daniil Prylepa",
     "license": "MIT",
     "dependencies": {
-        "date-fns": "^4.4.0",
-        "node-telegram-bot-api": "^1.1.2"
+        "date-fns": "^4.4.0"
     },
     "peerDependencies": {
         "@polar-sh/sdk": ">=0.48.1",

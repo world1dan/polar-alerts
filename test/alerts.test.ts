@@ -9,8 +9,10 @@ import {
 } from 'bun:test'
 
 import { htmlToText } from '../src/html'
+import { TelegramApiError } from '../src/senders'
 import type { PolarAlertsConfig, WebhookPayload } from '../src/types'
 import { formatDate, formatMoney, formatRecurringInterval } from '../src/utils'
+import { PolarAlertsClient } from '../src/webhook-handler'
 import {
     checkout,
     customer,
@@ -32,16 +34,41 @@ type SendMessage = (
     options: Record<string, unknown>,
 ) => Promise<unknown>
 
+/**
+ * Stands in for Telegram's `sendMessage` endpoint. Resolve with a `Response` (see
+ * `telegramError`) to return an API error; reject to simulate a network failure.
+ */
 const sendMessage = mock<SendMessage>(() => Promise.resolve({}))
 
-mock.module('node-telegram-bot-api', () => ({
-    default: class {
-        sendMessage = sendMessage
-    },
-}))
+/** A fake Telegram Bot API that hands `sendMessage` requests to the mock above. */
+async function fakeTelegramApi(
+    _url: string | URL | Request,
+    init?: RequestInit,
+): Promise<Response> {
+    const { chat_id, text, ...options } = JSON.parse(String(init?.body))
+    const result = await sendMessage(chat_id, text, options)
+    return result instanceof Response
+        ? result
+        : Response.json({ ok: true, result })
+}
 
-// Imported after the Telegram client is mocked, so the client picks up the mock
-const { PolarAlertsClient } = await import('../src/webhook-handler')
+function telegramError(
+    status: number,
+    description: string,
+    retryAfter?: number,
+): Response {
+    return Response.json(
+        {
+            ok: false,
+            error_code: status,
+            description,
+            ...(retryAfter !== undefined && {
+                parameters: { retry_after: retryAfter },
+            }),
+        },
+        { status },
+    )
+}
 
 const baseConfig: PolarAlertsConfig = {
     polarServer: 'production',
@@ -89,20 +116,24 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const orderPaid = payload('order.paid', order)
 
-let consoleSpies: { mockRestore(): void }[] = []
+let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, 'fetch'>>
+let spies: { mockRestore(): void }[] = []
 
 beforeEach(() => {
     sendMessage.mockReset()
     sendMessage.mockResolvedValue({})
-    consoleSpies = [
+    fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(
+        fakeTelegramApi as typeof fetch,
+    )
+    spies = [
+        fetchSpy,
         spyOn(console, 'error').mockImplementation(() => {}),
         spyOn(console, 'warn').mockImplementation(() => {}),
     ]
 })
 
 afterEach(() => {
-    // Restore just these spies, leaving the Telegram module mock in place
-    for (const spy of consoleSpies) {
+    for (const spy of spies) {
         spy.mockRestore()
     }
 })
@@ -135,8 +166,8 @@ describe('delivery', () => {
     })
 
     it('does not throw when Telegram rejects the message', async () => {
-        sendMessage.mockRejectedValue(
-            new Error('ETELEGRAM: 403 Forbidden: bot was blocked by the user'),
+        sendMessage.mockImplementation(async () =>
+            telegramError(403, 'Forbidden: bot was blocked by the user'),
         )
 
         await expect(
@@ -251,15 +282,20 @@ describe('onError', () => {
     })
 
     it('reports delivery errors with the alert', async () => {
-        const failure = new Error('ETELEGRAM: 403 Forbidden')
-        sendMessage.mockRejectedValue(failure)
+        sendMessage.mockImplementation(async () =>
+            telegramError(403, 'Forbidden: bot was blocked by the user'),
+        )
         const onError = mock()
 
         await send(orderPaid, { onError })
 
         expect(onError).toHaveBeenCalledTimes(1)
         const [error, context] = onError.mock.calls[0]
-        expect(error).toBe(failure)
+        expect(error).toBeInstanceOf(TelegramApiError)
+        expect(error).toMatchObject({
+            status: 403,
+            description: 'Forbidden: bot was blocked by the user',
+        })
         expect(context).toMatchObject({
             stage: 'send',
             eventType: 'order.paid',
@@ -413,9 +449,10 @@ describe('message length', () => {
     })
 
     it('resends as plain text when Telegram cannot parse the markup', async () => {
-        sendMessage.mockRejectedValueOnce(
-            new Error(
-                'ETELEGRAM: 400 Bad Request: can\'t parse entities: Unsupported start tag "foo"',
+        sendMessage.mockResolvedValueOnce(
+            telegramError(
+                400,
+                'Bad Request: can\'t parse entities: Unsupported start tag "foo"',
             ),
         )
 
@@ -428,6 +465,74 @@ describe('message length', () => {
         expect(messages).toHaveLength(2)
         expect(messages[1].options.parse_mode).toBeUndefined()
         expect(messages[1].text).toBe('Custom\n\nbar & baz')
+    })
+})
+
+describe('telegram api', () => {
+    it('posts JSON to the sendMessage endpoint', async () => {
+        await send(orderPaid)
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        const [url, init] = fetchSpy.mock.calls[0]
+        expect(String(url)).toBe(
+            'https://api.telegram.org/bottoken/sendMessage',
+        )
+        expect(init).toMatchObject({
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+        })
+        expect(init?.signal).toBeInstanceOf(AbortSignal)
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+            chat_id: '-100123',
+            parse_mode: 'HTML',
+            link_preview_options: { is_disabled: true },
+            disable_notification: false,
+        })
+    })
+
+    it('retries once when rate limited', async () => {
+        sendMessage.mockResolvedValueOnce(
+            telegramError(429, 'Too Many Requests: retry after 0', 0),
+        )
+
+        const onError = mock()
+        await send(orderPaid, { onError })
+
+        expect(sendMessage).toHaveBeenCalledTimes(2)
+        expect(onError).not.toHaveBeenCalled()
+    })
+
+    it('gives up when asked to wait too long', async () => {
+        sendMessage.mockImplementation(async () =>
+            telegramError(429, 'Too Many Requests: retry after 30', 30),
+        )
+        const onError = mock()
+
+        await send(orderPaid, { onError })
+
+        expect(sendMessage).toHaveBeenCalledTimes(1)
+        expect(onError.mock.calls[0][0]).toMatchObject({
+            status: 429,
+            retryAfter: 30,
+        })
+    })
+
+    it('reports responses that are not JSON', async () => {
+        sendMessage.mockResolvedValue(
+            new Response('<html>Bad Gateway</html>', {
+                status: 502,
+                statusText: 'Bad Gateway',
+            }),
+        )
+        const onError = mock()
+
+        await send(orderPaid, { onError })
+
+        expect(onError.mock.calls[0][0]).toBeInstanceOf(TelegramApiError)
+        expect(onError.mock.calls[0][0]).toMatchObject({
+            status: 502,
+            description: 'Bad Gateway',
+        })
     })
 })
 
