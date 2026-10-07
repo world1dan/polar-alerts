@@ -104,7 +104,7 @@ exports[`alert templates subscription.created 1`] = `
 #subscription #created"
 `;
 
-exports[`alert templates subscription.updated 1`] = `
+exports[`alert templates subscription.past_due 1`] = `
 "<b>🔁⚠️ Subscription Payment Past Due</b>
 
 <a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
@@ -131,37 +131,6 @@ exports[`alert templates subscription.updated 1`] = `
 🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
 
 #subscription #past_due"
-`;
-
-exports[`alert templates subscription.active 1`] = `
-"<b>🔁✅ Subscription Active</b>
-
-<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
-
-<b>Status</b> - <code>ACTIVE</code>
-<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
-
-🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
-       - <b>12.5%</b> off (forever)
-<b>💵 Amount</b> - <b>€85.50</b> every 3 months
-
-<b>👥 Seats</b> - <code>5</code>
-
-<b>Current period start</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
-<b>Current period end</b> - <code>Oct 15, 2026, 12:00 PM UTC</code>
-
-🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
-
-🇩🇪 Jane Doe
-<code>jane_doe@example.com</code>
-
-<b>Created</b> - <code>Sep 15, 2026</code>
-<b>Device</b> - <code>📱 Mobile</code>
-<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
-
-🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
-
-#subscription #active"
 `;
 
 exports[`alert templates subscription.canceled 1`] = `

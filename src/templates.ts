@@ -201,12 +201,7 @@ export function createAlertTemplates(
             }
         },
 
-        ['subscription.updated']: (subscription) => {
-            // Only notify on past_due status
-            if (subscription.status !== 'past_due') {
-                return
-            }
-
+        ['subscription.past_due']: (subscription) => {
             const description = new AlertDescriptionBuilder(config)
                 .productInfo(subscription.product, {
                     prices: subscription.prices,
@@ -252,57 +247,6 @@ export function createAlertTemplates(
                 description: description
                     .separator()
                     .hashtags(['subscription', 'past_due'])
-                    .build(),
-                silent: true,
-            }
-        },
-
-        ['subscription.active']: (subscription) => {
-            const description = new AlertDescriptionBuilder(config)
-                .productInfo(subscription.product, {
-                    prices: subscription.prices,
-                    currency: subscription.currency,
-                })
-                .separator()
-                .field('Status', subscription.status.toUpperCase(), 'code')
-                .dateField('Started on', subscription.startedAt)
-                .separator()
-                .discountInfo(
-                    subscription.discount,
-                    undefined,
-                    subscription.currency,
-                )
-                .moneyField(
-                    '💵 Amount',
-                    subscription.amount,
-                    true,
-                    subscriptionInterval(subscription),
-                    subscription.currency,
-                )
-
-            subscriptionTrial(subscription, description, config)
-            subscriptionSeats(subscription, description)
-
-            description
-                .separator()
-                .dateField(
-                    'Current period start',
-                    subscription.currentPeriodStart,
-                )
-                .dateField('Current period end', subscription.currentPeriodEnd)
-                .separator()
-                .link(
-                    'View Subscription',
-                    getSubscriptionLink(config, subscription.id),
-                )
-                .separator()
-                .customerInfo(subscription.customer)
-
-            return {
-                title: '🔁✅ Subscription Active',
-                description: description
-                    .separator()
-                    .hashtags(['subscription', 'active'])
                     .build(),
                 silent: true,
             }
@@ -559,7 +503,7 @@ export function createAlertTemplates(
                     .separator()
                     .hashtags(['seat', 'claimed'])
                     .build(),
-                silent: false,
+                silent: true,
             }
         },
 

@@ -108,21 +108,21 @@ const alerts = new PolarAlertsClient({
 
 ### Events
 
-| Event                                                        | Default | Notes                                   |
-| ------------------------------------------------------------ | ------- | --------------------------------------- |
-| `order.paid`                                                 | on      | Plays a notification sound              |
-| `order.refunded`                                             | on      |                                         |
-| `subscription.created`                                       | on      |                                         |
-| `subscription.active`                                        | on      |                                         |
-| `subscription.updated`                                       | on      | Only when a renewal payment is past due |
-| `subscription.canceled`                                      | on      | When the customer cancels               |
-| `subscription.uncanceled`                                    | on      |                                         |
-| `subscription.revoked`                                       | on      | Access has ended                        |
-| `refund.created` / `refund.updated`                          | on      |                                         |
-| `customer_seat.assigned` / `claimed` / `revoked`             | on      | Claimed plays a notification sound      |
-| `order.created` / `order.updated`                            | off     |                                         |
-| `checkout.created` / `checkout.updated`                      | off     |                                         |
-| `customer.created` / `customer.updated` / `customer.deleted` | off     |                                         |
+| Event                                                        | Default | Notes                      |
+| ------------------------------------------------------------ | ------- | -------------------------- |
+| `order.paid`                                                 | on      | Plays a notification sound |
+| `order.refunded`                                             | on      |                            |
+| `subscription.created`                                       | on      |                            |
+| `subscription.past_due`                                      | on      | A renewal payment failed   |
+| `subscription.canceled`                                      | on      | When the customer cancels  |
+| `subscription.uncanceled`                                    | on      |                            |
+| `refund.created` / `refund.updated`                          | on      |                            |
+| `customer_seat.assigned` / `customer_seat.revoked`           | on      |                            |
+| `customer_seat.claimed`                                      | off     |                            |
+| `subscription.revoked`                                       | off     | Access has ended           |
+| `order.created` / `order.updated`                            | off     |                            |
+| `checkout.created` / `checkout.updated`                      | off     |                            |
+| `customer.created` / `customer.updated` / `customer.deleted` | off     |                            |
 
 ```ts
 new PolarAlertsClient({

@@ -374,12 +374,11 @@ export const payloads: WebhookPayload[] = [
         customerId: customer.id,
     }),
     payload('subscription.created', subscription),
-    payload('subscription.updated', {
+    payload('subscription.past_due', {
         ...subscription,
         status: 'past_due',
         seats: 1,
     }),
-    payload('subscription.active', { ...subscription, status: 'active' }),
     payload('subscription.canceled', {
         ...subscription,
         status: 'active',

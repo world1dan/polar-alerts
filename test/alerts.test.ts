@@ -716,9 +716,14 @@ describe('alert content', () => {
         expect(message.text).toContain('View Customer')
     })
 
-    it('subscription.updated only alerts when the subscription is past due', async () => {
+    it('subscription.updated has no alert', async () => {
         expect(
-            await send(payload('subscription.updated', subscription)),
+            await send(
+                payload('subscription.updated', {
+                    ...subscription,
+                    status: 'past_due',
+                }),
+            ),
         ).toHaveLength(0)
     })
 })
@@ -731,8 +736,8 @@ describe('default events', () => {
             1,
         ],
         [
-            'subscription.updated (past due)',
-            payload('subscription.updated', {
+            'subscription.past_due',
+            payload('subscription.past_due', {
                 ...subscription,
                 status: 'past_due',
             }),
@@ -741,13 +746,20 @@ describe('default events', () => {
         [
             'subscription.active',
             payload('subscription.active', subscription),
-            1,
+            0,
+        ],
+        [
+            'subscription.revoked',
+            payload('subscription.revoked', subscription),
+            0,
         ],
         ['order.paid', orderPaid, 1],
         ['order.refunded', payload('order.refunded', order), 1],
         ['refund.created', payload('refund.created', refund), 1],
         ['refund.updated', payload('refund.updated', refund), 1],
         ['checkout.created', payload('checkout.created', checkout), 0],
+        ['customer_seat.assigned', payload('customer_seat.assigned', seat), 1],
+        ['customer_seat.claimed', payload('customer_seat.claimed', seat), 0],
     ] as const)('%s sends %i alert(s)', async (_name, event, count) => {
         expect(await send(event, { events: undefined })).toHaveLength(count)
     })
