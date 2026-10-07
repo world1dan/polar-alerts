@@ -1,9 +1,16 @@
+import type { validateEvent } from '@polar-sh/sdk/webhooks'
 import * as z from 'zod/v4'
 
 import { TelegramAlertsConfig } from './senders'
-import { createAlertTemplates } from './templates'
 
-export type EventType = keyof ReturnType<typeof createAlertTemplates>
+export type WebhookPayload = ReturnType<typeof validateEvent>
+
+export type EventType = WebhookPayload['type']
+
+export type EventData<T extends EventType> = Extract<
+    WebhookPayload,
+    { type: T }
+>['data']
 
 export const $DeviceType = z.enum(['mobile', 'tablet', 'desktop'])
 
@@ -34,16 +41,25 @@ export interface PolarAlertsConfig {
      */
     currency?: string
     /**
-     * Enable/disable specific event types
+     * IANA time zone used to format dates in alerts (e.g. `Europe/Berlin`).
+     *
+     * @default 'UTC'
      */
-    events?: Record<EventType, boolean> | 'all'
+    timeZone?: string
+    /**
+     * Enable/disable specific event types. Events you don't list keep their default.
+     * Pass `'all'` to enable every event that has an alert template.
+     */
+    events?: Partial<Record<EventType, boolean>> | 'all'
     /**
      * Telegram alert configuration options
      */
     telegram?: TelegramAlertsConfig
     /**
-     * Optional function to defer execution (e.g., Vercel's waitUntil)
-     * If not provided, alerts may be unreliable in serverless environments.
+     * Optional function to defer execution (e.g., Vercel's waitUntil).
+     *
+     * When provided, `handleWebhook` returns immediately and the alert is delivered in the
+     * background. Otherwise `handleWebhook` resolves once the alert has been delivered.
      *
      * See `waitUntil` documentation in
      * [Vercel](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#waituntil) and

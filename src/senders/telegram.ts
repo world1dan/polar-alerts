@@ -1,6 +1,10 @@
 import TelegramBot from 'node-telegram-bot-api'
 
-import { AlertParams, AlertsSender, AlertsSenderConfig } from './types'
+import { escapeHtml, htmlToText } from '../html'
+import { AlertParams, AlertsSender } from './types'
+
+/** Telegram rejects messages longer than this, counted after the markup is parsed. */
+const MAX_MESSAGE_LENGTH = 4096
 
 /**
  * Telegram alert configuration options
@@ -17,66 +21,79 @@ export interface TelegramAlertsConfig {
      */
     threadId?: number | string
     /**
-     * Optional: Send messages without notification sound.
-     * If true, alerts will be sent silently.
+     * Optional: Override whether alerts play a notification sound.
+     * `true` sends every alert silently, `false` makes every alert notify.
+     * When unset, each alert type uses its own default.
      */
     silent?: boolean
 }
 
 export class TelegramAlertSender implements AlertsSender {
-    constructor(private config: AlertsSenderConfig & TelegramAlertsConfig) {}
+    private bot: TelegramBot
 
-    sendAlert(params: AlertParams | Promise<AlertParams>): void {
-        const send = async () => {
-            const awaitedParams =
-                params instanceof Promise ? await params : params
+    constructor(private config: TelegramAlertsConfig) {
+        this.bot = new TelegramBot(config.botToken)
+    }
 
-            const { title, description } = awaitedParams
+    async send(alert: AlertParams): Promise<void> {
+        const html = [
+            `<b>${escapeHtml(alert.title)}</b>`,
+            alert.description?.trim(),
+        ]
+            .filter(Boolean)
+            .join('\n\n')
 
-            const bot = new TelegramBot(this.config.botToken)
+        const silent = this.config.silent ?? alert.silent
 
-            // Build message
-            let message = `*${this.escapeMarkdown(title)}*\n\n`
-
-            if (description) {
-                message += `${description}\n`
-            }
-
-            try {
-                await bot.sendMessage(this.config.chatId, message.trim(), {
-                    parse_mode: 'Markdown',
-                    message_thread_id: Number(this.config.threadId),
-                    link_preview_options: {
-                        is_disabled: true,
-                    },
-                    disable_notification:
-                        awaitedParams.silent ?? this.config.silent,
-                })
-            } catch (error) {
-                console.error('Failed to send Telegram alert:', error)
-                throw new Error(`Failed to send Telegram alert: ${error}`, {
-                    cause: error,
-                })
-            }
+        // Rather than lose the alert, send it as plain text when it's too long to
+        // keep the formatting or when Telegram can't parse the markup.
+        if (htmlToText(html).length > MAX_MESSAGE_LENGTH) {
+            await this.sendMessage(toPlainText(html), silent)
+            return
         }
 
         try {
-            if (this.config.waitUntil) {
-                this.config.waitUntil(send())
-            } else {
-                send().catch(console.error)
-            }
+            await this.sendMessage(html, silent, 'HTML')
         } catch (error) {
-            console.error('Error in sendAlert:', error)
+            if (!isEntityParseError(error)) {
+                throw error
+            }
+            console.warn(
+                '[polar-alerts] Telegram could not parse the alert, sending it as plain text:',
+                error,
+            )
+            await this.sendMessage(toPlainText(html), silent)
         }
     }
 
-    // This escapeMarkdown method is for Telegram v1 Markdown formatting.
-    escapeMarkdown(text: string): string {
-        return text
-            .replace(/\*/g, '\\*')
-            .replace(/_/g, '\\_')
-            .replace(/`/g, '\\`')
-            .replace(/\[/g, '\\[')
+    private async sendMessage(
+        text: string,
+        silent: boolean | undefined,
+        parseMode?: 'HTML',
+    ): Promise<void> {
+        const { threadId } = this.config
+
+        await this.bot.sendMessage(this.config.chatId, text, {
+            ...(parseMode && { parse_mode: parseMode }),
+            ...(threadId != null &&
+                threadId !== '' && { message_thread_id: Number(threadId) }),
+            link_preview_options: {
+                is_disabled: true,
+            },
+            disable_notification: silent,
+        })
     }
+}
+
+function toPlainText(html: string): string {
+    const text = htmlToText(html)
+    return text.length > MAX_MESSAGE_LENGTH
+        ? `${text.slice(0, MAX_MESSAGE_LENGTH - 1)}…`
+        : text
+}
+
+function isEntityParseError(error: unknown): boolean {
+    return (
+        error instanceof Error && error.message.includes("can't parse entities")
+    )
 }

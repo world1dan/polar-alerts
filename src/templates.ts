@@ -1,43 +1,35 @@
 import type { Checkout } from '@polar-sh/sdk/models/components/checkout.js'
-import type { Customer } from '@polar-sh/sdk/models/components/customer.js'
-import type { CustomerSeat } from '@polar-sh/sdk/models/components/customerseat.js'
 import type { Order } from '@polar-sh/sdk/models/components/order.js'
-import type { Refund } from '@polar-sh/sdk/models/components/refund.js'
 import type { Subscription } from '@polar-sh/sdk/models/components/subscription.js'
-import { endOfDay, format, formatDuration, intervalToDuration } from 'date-fns'
+import { formatDuration, intervalToDuration } from 'date-fns'
 
 import { AlertDescriptionBuilder } from './description-builder'
 import { AlertParams } from './senders/types'
-import { PolarAlertsConfig } from './types'
+import { EventData, EventType, PolarAlertsConfig } from './types'
 import {
+    formatDate,
     getCheckoutLink,
     getCustomerLink,
     getOrderLink,
     getSubscriptionLink,
 } from './utils'
 
-export function createAlertTemplates({
-    config,
-    escapeMarkdown,
-}: {
-    config: PolarAlertsConfig
-    escapeMarkdown: (text: string) => string
-}): Record<
-    string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (params: { data: any }) => Promise<AlertParams | undefined>
-> {
+type AlertTemplate<T extends EventType> = (
+    data: EventData<T>,
+) => AlertParams | undefined
+
+export type AlertTemplates = { [T in EventType]?: AlertTemplate<T> }
+
+export function createAlertTemplates(
+    config: PolarAlertsConfig,
+): AlertTemplates {
     return {
-        ['checkout.created']: async ({
-            data: checkout,
-        }: {
-            data: Checkout
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productsInfo(checkout.products)
+        ['checkout.created']: (checkout) => {
+            const description = new AlertDescriptionBuilder(config)
+
+            checkoutProducts(checkout, description)
+
+            description
                 .separator()
                 .field('Status', checkout.status.toUpperCase())
                 .dateField('Created at', checkout.createdAt)
@@ -72,47 +64,17 @@ export function createAlertTemplates({
                 .separator()
                 .link('View Checkout', getCheckoutLink(config, checkout.id))
 
-            // Customer information
-            if (checkout.customerId) {
-                description.separator().customerInfo({
-                    id: checkout.customerId,
-                    name: checkout.customerName,
-                    email: checkout.customerEmail,
-                    billingAddress: checkout.customerBillingAddress,
-                })
-            }
+            checkoutCustomer(checkout, description)
 
-            // Custom fields data
-            if (
-                checkout.customFieldData &&
-                Object.keys(checkout.customFieldData).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Custom Fields',
-                        JSON.stringify(checkout.customFieldData, null, 2),
-                        'code',
-                    )
-            }
-
-            // Metadata
-            if (
-                checkout.metadata &&
-                Object.keys(checkout.metadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(checkout.metadata, null, 2),
-                        'code',
-                    )
-            }
+            description
+                .separator()
+                .json('Custom Fields', checkout.customFieldData)
+                .separator()
+                .json('Metadata', checkout.metadata)
 
             return {
                 title: '🛒🆕 Checkout Created',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['checkout', 'created'])
                     .build(),
@@ -120,16 +82,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['checkout.updated']: async ({
-            data: checkout,
-        }: {
-            data: Checkout
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productsInfo(checkout.products)
+        ['checkout.updated']: (checkout) => {
+            const description = new AlertDescriptionBuilder(config)
+
+            checkoutProducts(checkout, description)
+
+            description
                 .separator()
                 .field('Status', checkout.status.toUpperCase())
                 .dateField('Created at', checkout.createdAt)
@@ -164,35 +122,20 @@ export function createAlertTemplates({
                 .separator()
                 .link('View Checkout', getCheckoutLink(config, checkout.id))
 
-            // Customer
-            if (checkout.customerId) {
-                description.separator().customerInfo({
-                    id: checkout.customerId,
-                    name: checkout.customerName,
-                    email: checkout.customerEmail,
-                    billingAddress: checkout.customerBillingAddress,
-                })
-            }
+            checkoutCustomer(checkout, description)
 
-            if (
-                checkout.metadata &&
-                Object.keys(checkout.metadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(checkout.metadata, null, 2),
-                        'code',
-                    )
-            }
+            description
+                .separator()
+                .json('Custom Fields', checkout.customFieldData)
+                .separator()
+                .json('Metadata', checkout.metadata)
 
             return {
                 title:
                     checkout.status === 'succeeded'
                         ? '🛒✅ Checkout Succeeded'
                         : '🛒🔁 Checkout Updated',
-                description: await description
+                description: description
                     .separator()
                     .hashtags([
                         'checkout',
@@ -205,16 +148,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['subscription.created']: async ({
-            data: subscription,
-        }: {
-            data: Subscription
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(subscription.product)
+        ['subscription.created']: (subscription) => {
+            const description = new AlertDescriptionBuilder(config)
+                .productInfo(subscription.product, {
+                    prices: subscription.prices,
+                    currency: subscription.currency,
+                })
                 .separator()
                 .field('Status', subscription.status.toUpperCase())
                 .dateField('Started on', subscription.startedAt)
@@ -228,11 +167,11 @@ export function createAlertTemplates({
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval,
+                    subscriptionInterval(subscription),
                     subscription.currency,
                 )
 
-            subscriptionTrial(subscription, description)
+            subscriptionTrial(subscription, description, config)
             subscriptionSeats(subscription, description)
 
             description
@@ -249,23 +188,12 @@ export function createAlertTemplates({
                 )
                 .separator()
                 .customerInfo(subscription.customer)
-
-            if (
-                subscription.metadata &&
-                Object.keys(subscription.metadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(subscription.metadata, null, 2),
-                        'code',
-                    )
-            }
+                .separator()
+                .json('Metadata', subscription.metadata)
 
             return {
                 title: '🔁✅ Subscription Created',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['subscription', 'created'])
                     .build(),
@@ -273,21 +201,17 @@ export function createAlertTemplates({
             }
         },
 
-        ['subscription.updated']: async ({
-            data: subscription,
-        }: {
-            data: Subscription
-        }) => {
+        ['subscription.updated']: (subscription) => {
             // Only notify on past_due status
             if (subscription.status !== 'past_due') {
                 return
             }
 
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(subscription.product)
+            const description = new AlertDescriptionBuilder(config)
+                .productInfo(subscription.product, {
+                    prices: subscription.prices,
+                    currency: subscription.currency,
+                })
                 .separator()
                 .field('Status', subscription.status.toUpperCase(), 'code')
                 .dateField('Started on', subscription.startedAt)
@@ -301,14 +225,15 @@ export function createAlertTemplates({
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval,
+                    subscriptionInterval(subscription),
                     subscription.currency,
                 )
 
-            subscriptionTrial(subscription, description)
+            subscriptionTrial(subscription, description, config)
             subscriptionSeats(subscription, description)
 
             description
+                .separator()
                 .dateField(
                     'Current period start',
                     subscription.currentPeriodStart,
@@ -324,7 +249,7 @@ export function createAlertTemplates({
 
             return {
                 title: '🔁⚠️ Subscription Payment Past Due',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['subscription', 'past_due'])
                     .build(),
@@ -332,16 +257,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['subscription.active']: async ({
-            data: subscription,
-        }: {
-            data: Subscription
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(subscription.product)
+        ['subscription.active']: (subscription) => {
+            const description = new AlertDescriptionBuilder(config)
+                .productInfo(subscription.product, {
+                    prices: subscription.prices,
+                    currency: subscription.currency,
+                })
                 .separator()
                 .field('Status', subscription.status.toUpperCase(), 'code')
                 .dateField('Started on', subscription.startedAt)
@@ -355,15 +276,15 @@ export function createAlertTemplates({
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval,
+                    subscriptionInterval(subscription),
                     subscription.currency,
                 )
-                .separator()
 
-            subscriptionTrial(subscription, description)
+            subscriptionTrial(subscription, description, config)
             subscriptionSeats(subscription, description)
 
             description
+                .separator()
                 .dateField(
                     'Current period start',
                     subscription.currentPeriodStart,
@@ -379,7 +300,7 @@ export function createAlertTemplates({
 
             return {
                 title: '🔁✅ Subscription Active',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['subscription', 'active'])
                     .build(),
@@ -387,22 +308,18 @@ export function createAlertTemplates({
             }
         },
 
-        ['subscription.canceled']: async ({
-            data: subscription,
-        }: {
-            data: Subscription
-        }) => {
+        ['subscription.canceled']: (subscription) => {
             // Avoid sending duplicate notifications for subscriptions transitioning from "Ends on period end" to "Canceled".
             // Only send an alert when the user initiates the cancellation, not when the cancellation is automatically finalized.
             if (subscription.status === 'canceled') {
                 return
             }
 
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(subscription.product)
+            const description = new AlertDescriptionBuilder(config)
+                .productInfo(subscription.product, {
+                    prices: subscription.prices,
+                    currency: subscription.currency,
+                })
                 .separator()
                 .field(
                     'Status',
@@ -411,10 +328,7 @@ export function createAlertTemplates({
                     }`,
                     'code',
                 )
-
-            if (subscription.canceledAt) {
-                description.dateField('Canceled on', subscription.canceledAt)
-            }
+                .dateField('Canceled on', subscription.canceledAt)
 
             // Cancellation reason
             if (subscription.customerCancellationReason) {
@@ -441,22 +355,17 @@ export function createAlertTemplates({
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval,
+                    subscriptionInterval(subscription),
                     subscription.currency,
                 )
 
-            subscriptionTrial(subscription, description)
+            subscriptionTrial(subscription, description, config)
             subscriptionSeats(subscription, description)
 
             description
                 .separator()
                 .dateField('Started on', subscription.startedAt)
-
-            if (subscription.endsAt) {
-                description.dateField('Ends on', subscription.endsAt)
-            }
-
-            description
+                .dateField('Ends on', subscription.endsAt)
                 .separator()
                 .link(
                     'View Subscription',
@@ -464,23 +373,12 @@ export function createAlertTemplates({
                 )
                 .separator()
                 .customerInfo(subscription.customer)
-
-            if (
-                subscription.metadata &&
-                Object.keys(subscription.metadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(subscription.metadata, null, 2),
-                        'code',
-                    )
-            }
+                .separator()
+                .json('Metadata', subscription.metadata)
 
             return {
                 title: '🔁❌ Subscription Canceled',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['subscription', 'canceled'])
                     .build(),
@@ -488,31 +386,22 @@ export function createAlertTemplates({
             }
         },
 
-        ['subscription.revoked']: async ({
-            data: subscription,
-        }: {
-            data: Subscription
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(subscription.product)
+        ['subscription.revoked']: (subscription) => {
+            const description = new AlertDescriptionBuilder(config)
+                .productInfo(subscription.product, {
+                    prices: subscription.prices,
+                    currency: subscription.currency,
+                })
                 .separator()
                 .field('Status', subscription.status.toUpperCase(), 'code')
 
-            subscriptionTrial(subscription, description)
+            subscriptionTrial(subscription, description, config)
             subscriptionSeats(subscription, description)
 
             description
                 .separator()
                 .dateField('Started on', subscription.startedAt)
-
-            if (subscription.endsAt) {
-                description.dateField('Ended on', subscription.endsAt)
-            }
-
-            description
+                .dateField('Ended on', subscription.endsAt)
                 .separator()
                 .discountInfo(
                     subscription.discount,
@@ -523,7 +412,7 @@ export function createAlertTemplates({
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval,
+                    subscriptionInterval(subscription),
                     subscription.currency,
                 )
                 .separator()
@@ -536,7 +425,7 @@ export function createAlertTemplates({
 
             return {
                 title: '🔁🚫 Subscription Revoked',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['subscription', 'revoked'])
                     .build(),
@@ -544,16 +433,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['subscription.uncanceled']: async ({
-            data: subscription,
-        }: {
-            data: Subscription
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(subscription.product)
+        ['subscription.uncanceled']: (subscription) => {
+            const description = new AlertDescriptionBuilder(config)
+                .productInfo(subscription.product, {
+                    prices: subscription.prices,
+                    currency: subscription.currency,
+                })
                 .separator()
                 .field('Status', subscription.status.toUpperCase(), 'code')
                 .dateField('Started on', subscription.startedAt)
@@ -567,11 +452,11 @@ export function createAlertTemplates({
                     '💵 Amount',
                     subscription.amount,
                     true,
-                    subscription.recurringInterval,
+                    subscriptionInterval(subscription),
                     subscription.currency,
                 )
 
-            subscriptionTrial(subscription, description)
+            subscriptionTrial(subscription, description, config)
             subscriptionSeats(subscription, description)
 
             description
@@ -582,7 +467,6 @@ export function createAlertTemplates({
                 )
                 .dateField('Current period end', subscription.currentPeriodEnd)
                 .separator()
-                .separator()
                 .link(
                     'View Subscription',
                     getSubscriptionLink(config, subscription.id),
@@ -592,7 +476,7 @@ export function createAlertTemplates({
 
             return {
                 title: '🔁✅ Subscription Uncanceled',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['subscription', 'uncanceled'])
                     .build(),
@@ -600,15 +484,8 @@ export function createAlertTemplates({
             }
         },
 
-        ['customer_seat.assigned']: async ({
-            data: seat,
-        }: {
-            data: CustomerSeat
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+        ['customer_seat.assigned']: (seat) => {
+            const description = new AlertDescriptionBuilder(config)
                 .field('Status', seat.status.toUpperCase())
                 .dateField('Assigned on', seat.createdAt)
                 .dateField('Invitation expires', seat.invitationTokenExpiresAt)
@@ -636,22 +513,11 @@ export function createAlertTemplates({
                 )
             }
 
-            if (
-                seat.seatMetadata &&
-                Object.keys(seat.seatMetadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(seat.seatMetadata, null, 2),
-                        'code',
-                    )
-            }
+            description.separator().json('Metadata', seat.seatMetadata)
 
             return {
                 title: '💺🆕 Seat Assigned',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['seat', 'assigned'])
                     .build(),
@@ -659,15 +525,8 @@ export function createAlertTemplates({
             }
         },
 
-        ['customer_seat.claimed']: async ({
-            data: seat,
-        }: {
-            data: CustomerSeat
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+        ['customer_seat.claimed']: (seat) => {
+            const description = new AlertDescriptionBuilder(config)
                 .field('Status', seat.status.toUpperCase())
                 .dateField('Claimed on', seat.claimedAt)
 
@@ -696,7 +555,7 @@ export function createAlertTemplates({
 
             return {
                 title: '💺✅ Seat Claimed',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['seat', 'claimed'])
                     .build(),
@@ -704,15 +563,8 @@ export function createAlertTemplates({
             }
         },
 
-        ['customer_seat.revoked']: async ({
-            data: seat,
-        }: {
-            data: CustomerSeat
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+        ['customer_seat.revoked']: (seat) => {
+            const description = new AlertDescriptionBuilder(config)
                 .field('Status', seat.status.toUpperCase())
                 .dateField('Revoked on', seat.revokedAt)
 
@@ -741,7 +593,7 @@ export function createAlertTemplates({
 
             return {
                 title: '💺🚫 Seat Revoked',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['seat', 'revoked'])
                     .build(),
@@ -749,18 +601,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['order.created']: async ({ data: order }: { data: Order }) => {
-            if (!order.product) {
-                throw new Error('Product not found in order.')
-            }
+        ['order.created']: (order) => {
+            const description = new AlertDescriptionBuilder(config)
 
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+            orderProduct(order, description)
 
             description
-                .productInfo(order.product)
                 .separator()
                 .field('Status', order.status.toUpperCase())
                 .dateField('Created on', order.createdAt)
@@ -768,7 +614,7 @@ export function createAlertTemplates({
                 .moneyField(
                     '🔙 Refunded Amount',
                     order.refundedAmount,
-                    true,
+                    order.refundedAmount !== 0,
                     undefined,
                     order.currency,
                 )
@@ -801,8 +647,8 @@ export function createAlertTemplates({
                 )
                 .moneyField(
                     '🏛️ Tax',
-                    order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0,
+                    order.taxAmount,
+                    order.taxAmount > 0,
                     undefined,
                     order.currency,
                 )
@@ -817,16 +663,6 @@ export function createAlertTemplates({
                 .field('Billing reason', order.billingReason.toUpperCase())
                 .field('Invoice number', order.invoiceNumber, 'code')
                 .separator()
-
-            // Subscription info
-            if (order.subscriptionId) {
-                description.link(
-                    'View Subscription',
-                    getSubscriptionLink(config, order.subscriptionId),
-                )
-            }
-
-            description
                 .link('View Order', getOrderLink(config, order.id))
                 .separator()
 
@@ -845,34 +681,14 @@ export function createAlertTemplates({
                 )
                 .separator()
                 .customerInfo(order.customer)
-
-            // Custom fields
-            if (
-                order.customFieldData &&
-                Object.keys(order.customFieldData).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Custom Fields',
-                        JSON.stringify(order.customFieldData, null, 2),
-                        'code',
-                    )
-            }
-
-            if (order.metadata && Object.keys(order.metadata).length > 0) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(order.metadata, null, 2),
-                        'code',
-                    )
-            }
+                .separator()
+                .json('Custom Fields', order.customFieldData)
+                .separator()
+                .json('Metadata', order.metadata)
 
             return {
                 title: '💰🆕 Order Created',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['order', 'created'])
                     .build(),
@@ -880,18 +696,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['order.paid']: async ({ data: order }: { data: Order }) => {
-            if (!order.product) {
-                throw new Error('Product not found in order.')
-            }
+        ['order.paid']: (order) => {
+            const description = new AlertDescriptionBuilder(config)
 
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+            orderProduct(order, description)
 
             description
-                .productInfo(order.product)
                 .separator()
                 .moneyField(
                     '🧾 Subtotal',
@@ -907,8 +717,8 @@ export function createAlertTemplates({
                 )
                 .moneyField(
                     '🏛️ Tax',
-                    order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0,
+                    order.taxAmount,
+                    order.taxAmount > 0,
                     undefined,
                     order.currency,
                 )
@@ -923,8 +733,6 @@ export function createAlertTemplates({
                 .field('Billing reason', order.billingReason.toUpperCase())
                 .field('Invoice number', order.invoiceNumber, 'code')
                 .separator()
-
-            description
                 .link('View Order', getOrderLink(config, order.id))
                 .separator()
 
@@ -947,7 +755,7 @@ export function createAlertTemplates({
 
             return {
                 title: '💰✅ Order Paid',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['order', 'paid'])
                     .build(),
@@ -955,16 +763,12 @@ export function createAlertTemplates({
             }
         },
 
-        ['order.refunded']: async ({ data: order }: { data: Order }) => {
-            if (!order.product) {
-                throw new Error('Product not found in order.')
-            }
+        ['order.refunded']: (order) => {
+            const description = new AlertDescriptionBuilder(config)
 
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .productInfo(order.product)
+            orderProduct(order, description)
+
+            description
                 .separator()
                 .field('Status', order.status.toUpperCase(), 'code')
                 .separator()
@@ -1005,8 +809,8 @@ export function createAlertTemplates({
                 )
                 .moneyField(
                     '🏛️ Tax',
-                    order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0,
+                    order.taxAmount,
+                    order.taxAmount > 0,
                     undefined,
                     order.currency,
                 )
@@ -1039,7 +843,7 @@ export function createAlertTemplates({
 
             return {
                 title: '💰🔙 Order Refunded',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['order', 'refunded'])
                     .build(),
@@ -1047,27 +851,16 @@ export function createAlertTemplates({
             }
         },
 
-        ['order.updated']: async ({ data: order }: { data: Order }) => {
-            if (!order.product) {
-                throw new Error('Product not found in order.')
-            }
+        ['order.updated']: (order) => {
+            const description = new AlertDescriptionBuilder(config)
 
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+            orderProduct(order, description)
 
             description
-                .productInfo(order.product)
                 .separator()
                 .field('Status', order.status.toUpperCase())
                 .dateField('Created on', order.createdAt)
-
-            if (order.modifiedAt) {
-                description.dateField('🔁 Updated on', order.modifiedAt)
-            }
-
-            description
+                .dateField('🔁 Updated on', order.modifiedAt)
                 .moneyField(
                     '🔙 Refunded Amount',
                     order.refundedAmount,
@@ -1097,8 +890,8 @@ export function createAlertTemplates({
                 )
                 .moneyField(
                     '🏛️ Tax',
-                    order.taxAmount ?? 0,
-                    order.taxAmount !== null && order.taxAmount > 0,
+                    order.taxAmount,
+                    order.taxAmount > 0,
                     undefined,
                     order.currency,
                 )
@@ -1131,7 +924,7 @@ export function createAlertTemplates({
 
             return {
                 title: '💰🔁 Order Updated',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['order', 'updated'])
                     .build(),
@@ -1139,11 +932,8 @@ export function createAlertTemplates({
             }
         },
 
-        ['refund.created']: async ({ data: refund }: { data: Refund }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
+        ['refund.created']: (refund) => {
+            const description = new AlertDescriptionBuilder(config)
                 .field('Status', refund.status.toUpperCase())
                 .field('Reason', refund.reason.toUpperCase())
                 .dateField('Created on', refund.createdAt)
@@ -1158,7 +948,61 @@ export function createAlertTemplates({
                 .moneyField(
                     '🏛️ Tax Refund',
                     refund.taxAmount,
-                    refund.taxAmount !== null && refund.taxAmount > 0,
+                    refund.taxAmount > 0,
+                    undefined,
+                    refund.currency,
+                )
+
+            if (refund.dispute) {
+                description
+                    .separator()
+                    .field('⚠️ Dispute', refund.dispute.status.toUpperCase())
+            }
+
+            description
+                .separator()
+                .link('View Order', getOrderLink(config, refund.orderId))
+
+            if (refund.subscriptionId) {
+                description.link(
+                    'View Subscription',
+                    getSubscriptionLink(config, refund.subscriptionId),
+                )
+            }
+
+            description.link(
+                'View Customer',
+                getCustomerLink(config, refund.customerId),
+            )
+
+            return {
+                title: '🔙🆕 Refund Created',
+                description: description
+                    .separator()
+                    .hashtags(['refund', 'created'])
+                    .build(),
+                silent: true,
+            }
+        },
+
+        ['refund.updated']: (refund) => {
+            const description = new AlertDescriptionBuilder(config)
+                .field('Status', refund.status.toUpperCase())
+                .field('Reason', refund.reason.toUpperCase())
+                .dateField('Created on', refund.createdAt)
+                .dateField('🔁 Updated on', refund.modifiedAt)
+                .separator()
+                .moneyField(
+                    '🔙 Refund Amount',
+                    refund.amount,
+                    true,
+                    undefined,
+                    refund.currency,
+                )
+                .moneyField(
+                    '🏛️ Tax Refund',
+                    refund.taxAmount,
+                    refund.taxAmount > 0,
                     undefined,
                     refund.currency,
                 )
@@ -1172,51 +1016,14 @@ export function createAlertTemplates({
                 )
             }
 
-            return {
-                title: '🔙🆕 Refund Created',
-                description: await description
-                    .separator()
-                    .hashtags(['refund', 'created'])
-                    .build(),
-                silent: true,
-            }
-        },
-
-        ['refund.updated']: async ({ data: refund }: { data: Refund }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-                .field('Status', refund.status.toUpperCase())
-                .field('Reason', refund.reason.toUpperCase())
-                .dateField('Created on', refund.createdAt)
-
-            if (refund.modifiedAt) {
-                description.dateField('🔁 Updated on', refund.modifiedAt)
-            }
-
-            description
-                .separator()
-                .moneyField(
-                    '🔙 Refund Amount',
-                    refund.amount,
-                    true,
-                    undefined,
-                    refund.currency,
-                )
-                .moneyField(
-                    '🏛️ Tax Refund',
-                    refund.taxAmount,
-                    refund.taxAmount !== null && refund.taxAmount > 0,
-                    undefined,
-                    refund.currency,
-                )
-                .separator()
-                .link('View Order', getOrderLink(config, refund.orderId))
+            description.link(
+                'View Customer',
+                getCustomerLink(config, refund.customerId),
+            )
 
             return {
                 title: '🔙🔁 Refund Updated',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['refund', 'updated'])
                     .build(),
@@ -1224,17 +1031,8 @@ export function createAlertTemplates({
             }
         },
 
-        ['customer.created']: async ({
-            data: customer,
-        }: {
-            data: Customer
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-
-            description
+        ['customer.created']: (customer) => {
+            const description = new AlertDescriptionBuilder(config)
                 .field('ID', customer.id, 'code')
                 .field('Name', customer.name || customer.email)
                 .field('Email', customer.email)
@@ -1246,26 +1044,15 @@ export function createAlertTemplates({
                     .field('External ID', customer.externalId)
             }
 
-            if (
-                customer.metadata &&
-                Object.keys(customer.metadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(customer.metadata, null, 2),
-                        'code',
-                    )
-            }
-
             description
+                .separator()
+                .json('Metadata', customer.metadata)
                 .separator()
                 .link('View Customer', getCustomerLink(config, customer.id))
 
             return {
                 title: '👤🆕 Customer Created',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['customer', 'created'])
                     .build(),
@@ -1273,52 +1060,22 @@ export function createAlertTemplates({
             }
         },
 
-        ['customer.updated']: async ({
-            data: customer,
-        }: {
-            data: Customer
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-
-            description.field('ID', customer.id, 'code')
-
-            if (customer.externalId) {
-                description.field('External ID', customer.externalId)
-            }
-
-            description
+        ['customer.updated']: (customer) => {
+            const description = new AlertDescriptionBuilder(config)
+                .field('ID', customer.id, 'code')
+                .field('External ID', customer.externalId)
                 .field('Name', customer.name || customer.email)
                 .field('Email', customer.email)
-
-            if (customer.modifiedAt) {
-                description
-                    .separator()
-                    .dateField('Updated at', customer.modifiedAt)
-            }
-
-            if (
-                customer.metadata &&
-                Object.keys(customer.metadata).length > 0
-            ) {
-                description
-                    .separator()
-                    .field(
-                        'Metadata',
-                        JSON.stringify(customer.metadata, null, 2),
-                        'code',
-                    )
-            }
-
-            description
+                .separator()
+                .dateField('Updated at', customer.modifiedAt)
+                .separator()
+                .json('Metadata', customer.metadata)
                 .separator()
                 .link('View Customer', getCustomerLink(config, customer.id))
 
             return {
                 title: '👤🔁 Customer Updated',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['customer', 'updated'])
                     .build(),
@@ -1326,34 +1083,75 @@ export function createAlertTemplates({
             }
         },
 
-        ['customer.deleted']: async ({
-            data: customer,
-        }: {
-            data: Customer
-        }) => {
-            const description = new AlertDescriptionBuilder({
-                config,
-                escapeMarkdown,
-            })
-
-            description
+        ['customer.deleted']: (customer) => {
+            const description = new AlertDescriptionBuilder(config)
                 .field('ID', customer.id, 'code')
                 .field('Name', customer.name || customer.email)
                 .field('Email', customer.email)
-
-            if (customer.deletedAt) {
-                description.dateField('❌ Deleted at', customer.deletedAt)
-            }
+                .dateField('❌ Deleted at', customer.deletedAt)
 
             return {
                 title: '👤❌ Customer Deleted',
-                description: await description
+                description: description
                     .separator()
                     .hashtags(['customer', 'deleted'])
                     .build(),
                 silent: true,
             }
         },
+    }
+}
+
+function checkoutProducts(
+    checkout: Checkout,
+    description: AlertDescriptionBuilder,
+): void {
+    // `products` lists everything offered in the checkout; `product` is the one selected
+    if (checkout.product) {
+        description.productInfo(checkout.product, {
+            prices: checkout.productPrice ? [checkout.productPrice] : undefined,
+            currency: checkout.currency,
+        })
+    } else {
+        description.productsInfo(checkout.products, {
+            currency: checkout.currency,
+        })
+    }
+}
+
+function checkoutCustomer(
+    checkout: Checkout,
+    description: AlertDescriptionBuilder,
+): void {
+    // New customers only get a `customerId` once the checkout succeeds
+    if (checkout.customerId || checkout.customerEmail) {
+        description.separator().customerInfo({
+            id: checkout.customerId,
+            name: checkout.customerName,
+            email: checkout.customerEmail,
+            billingAddress: checkout.customerBillingAddress,
+            metadata: checkout.customerMetadata,
+        })
+    }
+}
+
+function orderProduct(
+    order: Order,
+    description: AlertDescriptionBuilder,
+): void {
+    // `product` is null when the order isn't tied to a single product, e.g. when
+    // the product was deleted. Fall back to Polar's own description of the order.
+    if (order.product) {
+        description.productInfo(order.product)
+    } else {
+        description.custom(order.description)
+    }
+}
+
+function subscriptionInterval(subscription: Subscription) {
+    return {
+        interval: subscription.recurringInterval,
+        count: subscription.recurringIntervalCount,
     }
 }
 
@@ -1368,19 +1166,31 @@ function subscriptionSeats(
     }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
 function subscriptionTrial(
     subscription: Subscription,
     description: AlertDescriptionBuilder,
+    config: PolarAlertsConfig,
 ): void {
     if (
         subscription.status === 'trialing' &&
         subscription.trialStart &&
         subscription.trialEnd
     ) {
+        const start = new Date(subscription.trialStart)
+        const end = new Date(subscription.trialEnd)
+
+        // Round to whole days so a trial ending a few seconds early isn't shown as "6 days"
+        const days = Math.max(
+            1,
+            Math.round((end.getTime() - start.getTime()) / DAY_MS),
+        )
+
         const duration = formatDuration(
             intervalToDuration({
-                start: subscription.trialStart,
-                end: endOfDay(subscription.trialEnd),
+                start,
+                end: new Date(start.getTime() + days * DAY_MS),
             }),
             {
                 zero: false,
@@ -1392,7 +1202,7 @@ function subscriptionTrial(
             .separator()
             .field(
                 '🎁 Trial',
-                `${duration} (until ${format(subscription.trialEnd, 'MMM d, yyyy')})`,
+                `${duration} (until ${formatDate(end, config.timeZone ?? 'UTC', 'date')})`,
             )
     }
 }

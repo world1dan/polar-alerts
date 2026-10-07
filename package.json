@@ -1,6 +1,6 @@
 {
     "name": "polar-alerts",
-    "version": "0.0.12",
+    "version": "0.1.0",
     "description": "Automatic Telegram alerts for Polar events with built-in webhook handling",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -13,9 +13,11 @@
         "build": "tsc",
         "prepublishOnly": "npm run build",
         "dev": "tsc --watch",
+        "test": "bun test",
+        "test:watch": "bun test --watch",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
-        "check-types": "tsc --noEmit",
+        "check-types": "tsc --noEmit && tsc -p tsconfig.test.json",
         "format": "prettier --write . --log-level silent"
     },
     "keywords": [
@@ -43,6 +45,7 @@
         "@eslint/js": "^10.0.1",
         "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
         "@polar-sh/sdk": "^0.48.1",
+        "@types/bun": "^1.4.2",
         "@types/node": "^26.1.0",
         "eslint": "^10.6.0",
         "globals": "^17.7.0",

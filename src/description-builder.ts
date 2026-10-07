@@ -2,44 +2,49 @@ import type { Checkout } from '@polar-sh/sdk/models/components/checkout.js'
 import type { CheckoutProduct } from '@polar-sh/sdk/models/components/checkoutproduct.js'
 import type { Customer } from '@polar-sh/sdk/models/components/customer.js'
 import type { Discount } from '@polar-sh/sdk/models/components/discount.js'
-import type { DiscountFixedOnceForeverDuration } from '@polar-sh/sdk/models/components/discountfixedonceforeverduration.js'
-import type { DiscountFixedRepeatDuration } from '@polar-sh/sdk/models/components/discountfixedrepeatduration.js'
-import type { DiscountPercentageOnceForeverDuration } from '@polar-sh/sdk/models/components/discountpercentageonceforeverduration.js'
-import type { DiscountPercentageRepeatDuration } from '@polar-sh/sdk/models/components/discountpercentagerepeatduration.js'
+import type { LegacyRecurringProductPrice } from '@polar-sh/sdk/models/components/legacyrecurringproductprice.js'
 import type { OrderProduct } from '@polar-sh/sdk/models/components/orderproduct.js'
 import type { Product } from '@polar-sh/sdk/models/components/product.js'
-import type { ProductPriceFixed } from '@polar-sh/sdk/models/components/productpricefixed.js'
-import type { ProductPriceFree } from '@polar-sh/sdk/models/components/productpricefree.js'
-import { format } from 'date-fns'
+import type { ProductPrice } from '@polar-sh/sdk/models/components/productprice.js'
 
+import { bold, code, escapeHtml, isHttpUrl, italic, link, pre } from './html'
 import {
     $PolarAlertsCustomerMetadata,
     DeviceType,
     PolarAlertsConfig,
     PolarAlertsCustomerMetadata,
 } from './types'
-import { getCountryFlag, getCustomerLink, getProductLink } from './utils'
+import {
+    formatDate,
+    formatMoney,
+    formatRecurringInterval,
+    getCountryFlag,
+    getCustomerLink,
+    getProductLink,
+} from './utils'
 
 type FieldFormat = 'code' | 'italic' | 'plain'
 
-export class AlertDescriptionBuilder {
-    private sections: Array<string | Promise<string>> = []
-    private config: PolarAlertsConfig
-    private escapeMarkdown: (text: string) => string
+type Price = ProductPrice | LegacyRecurringProductPrice
 
-    constructor({
-        config,
-        escapeMarkdown,
-    }: {
-        config: PolarAlertsConfig
-        escapeMarkdown: (text: string) => string
-    }) {
+type AnyDiscount = Discount | NonNullable<Checkout['discount']>
+
+// Keeps metadata and custom fields from pushing the alert past Telegram's 4096-char limit
+const MAX_JSON_LENGTH = 1000
+
+/**
+ * Builds the HTML body of an alert. Every method escapes the values it's given.
+ */
+export class AlertDescriptionBuilder {
+    private sections: string[] = []
+    private config: PolarAlertsConfig
+
+    constructor(config: PolarAlertsConfig) {
         this.config = config
-        this.escapeMarkdown = escapeMarkdown
     }
 
-    custom(text: string | Promise<string>): this {
-        this.sections.push(text)
+    custom(text: string): this {
+        this.sections.push(escapeHtml(text))
         return this
     }
 
@@ -54,111 +59,109 @@ export class AlertDescriptionBuilder {
         format: FieldFormat = 'code',
     ): this {
         if (value) {
-            const escapedLabel = this.escapeMarkdown(label)
-
             let formattedValue: string
             if (format === 'code') {
-                // Inside backticks, underscores don't need escaping.
-                // We only escape the backtick itself.
-                const safeCodeValue = value.replace(/`/g, '\\`')
-                formattedValue = `\`${safeCodeValue}\``
+                formattedValue = code(value)
             } else if (format === 'italic') {
-                formattedValue = `_${this.escapeMarkdown(value)}_`
+                formattedValue = italic(value)
             } else {
-                formattedValue = this.escapeMarkdown(value)
+                formattedValue = escapeHtml(value)
             }
 
-            this.sections.push(`*${escapedLabel}* - ${formattedValue}`)
+            this.sections.push(`${bold(label)} - ${formattedValue}`)
         }
         return this
     }
 
-    dateField(
-        label: string,
-        date: Date | null | undefined,
-        dateFormat: string = 'MMM d, yyyy h:mm a',
-    ): this {
+    dateField(label: string, date: Date | null | undefined): this {
         if (date) {
-            this.field(label, format(date, dateFormat))
+            this.field(label, this.formatDate(date))
         }
         return this
     }
 
     moneyField(
         label: string,
-        amountInCents: number,
+        amount: number,
         condition: boolean = true,
-        recurringInterval?: string | null,
+        recurring?: { interval: string; count?: number | null } | null,
         currency?: string | null,
     ): this {
         if (condition) {
-            const formatted = this.formatMoney(amountInCents, currency)
-            let text = `*${label}* - *${formatted}*`
-            if (recurringInterval) {
-                text += `/${this.escapeMarkdown(recurringInterval)}`
+            let text = `${bold(label)} - ${bold(this.formatMoney(amount, currency))}`
+            if (recurring) {
+                text += escapeHtml(
+                    formatRecurringInterval(
+                        recurring.interval,
+                        recurring.count,
+                    ),
+                )
             }
             this.sections.push(text)
         }
         return this
     }
 
-    private formatMoney(
-        amountInCents: number,
-        currency?: string | null,
-    ): string {
-        const code = (currency ?? this.config.currency ?? 'usd').toUpperCase()
-        try {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: code,
-                minimumFractionDigits: 0,
-            }).format(amountInCents / 100)
-        } catch {
-            return `${code} ${(amountInCents / 100).toFixed(2)}`
+    /** Pretty-printed JSON block, truncated so it can't blow up the message. */
+    json(
+        label: string,
+        value: Record<string, unknown> | null | undefined,
+    ): this {
+        if (value && Object.keys(value).length > 0) {
+            let text = JSON.stringify(value, null, 2)
+            if (text.length > MAX_JSON_LENGTH) {
+                text = `${text.slice(0, MAX_JSON_LENGTH)}\n…`
+            }
+            this.sections.push(`${bold(label)}\n${pre(text)}`)
         }
+        return this
     }
 
-    productInfo(product: Product | CheckoutProduct | OrderProduct): this {
-        const price: ProductPriceFixed | ProductPriceFree | undefined =
-            'prices' in product
-                ? product.prices.find(
-                      (p) => p.amountType == 'fixed' || p.amountType === 'free',
-                  )
-                : undefined
+    /**
+     * @param options.prices - the prices to pick from, e.g. the subscription's own prices.
+     *   Defaults to the product's prices.
+     * @param options.currency - only show a price in this currency
+     */
+    productInfo(
+        product: Product | CheckoutProduct | OrderProduct,
+        options: { prices?: Price[]; currency?: string | null } = {},
+    ): this {
+        const prices =
+            options.prices ?? ('prices' in product ? product.prices : [])
+        const currency = options.currency?.toLowerCase()
+        const candidates = prices.filter(
+            (p) =>
+                !p.isArchived &&
+                (!currency || p.priceCurrency.toLowerCase() === currency),
+        )
+        // Prefer the base price over metered prices
+        const price =
+            candidates.find((p) => p.amountType !== 'metered_unit') ??
+            candidates[0]
 
-        let text = `[${this.escapeMarkdown(product.name)}](${getProductLink(
-            this.config,
-            product.id,
-        )})`
+        let text = link(product.name, getProductLink(this.config, product.id))
 
-        if (price !== undefined) {
-            if (price.amountType === 'free') {
-                text += ` (free)`
-            } else if (price.amountType === 'fixed') {
-                const ccy =
-                    'priceCurrency' in price ? price.priceCurrency : undefined
-                text += ` (*${this.formatMoney(price.priceAmount, ccy)}*`
-                if (product.recurringInterval) {
-                    text += `/${this.escapeMarkdown(product.recurringInterval)}`
-                }
-                text += ')'
-            }
+        if (price) {
+            text += ` ${this.formatPrice(price, product)}`
         }
 
         this.sections.push(text)
         return this
     }
 
-    productsInfo(products: (Product | CheckoutProduct | OrderProduct)[]): this {
+    productsInfo(
+        products: (Product | CheckoutProduct | OrderProduct)[],
+        options: { currency?: string | null } = {},
+    ): this {
         products.forEach((product) => {
-            this.productInfo(product)
+            this.productInfo(product, options)
         })
 
         return this
     }
 
     discountInfo(
-        discount: Discount | Checkout['discount'] | undefined | null,
+        discount: AnyDiscount | undefined | null,
         discountAmount?: number,
         currency?: string | null,
     ): this {
@@ -166,39 +169,38 @@ export class AlertDescriptionBuilder {
             return this
         }
 
-        let text = '🏷️ *Discount* - '
-
-        // Name and code
-        text += `*${this.escapeMarkdown(discount.name)}*`
+        let text = `🏷️ ${bold('Discount')} - ${bold(discount.name)}`
         if (discount.code) {
-            text += ` (\`${this.escapeMarkdown(discount.code)}\`)`
+            text += ` (${code(discount.code)})`
         }
 
         // Amount
-        if (isFixedDiscount(discount)) {
-            text += `\n       - *${this.formatMoney(
-                discount.amount,
-                discount.currency,
-            )}* off`
+        if (discount.type === 'fixed' && 'amount' in discount) {
+            // Fixed discounts can define an amount per currency
+            const amountInCurrency = currency
+                ? discount.amounts?.[currency.toLowerCase()]
+                : undefined
+            const amount =
+                amountInCurrency !== undefined
+                    ? formatMoney(amountInCurrency, currency!)
+                    : formatMoney(discount.amount, discount.currency)
+            text += `\n       - ${bold(amount)} off`
         }
 
-        if (isPercentageDiscount(discount)) {
+        if (discount.type === 'percentage' && 'basisPoints' in discount) {
             const percentage = discount.basisPoints / 100
-            text += `\n       - *${percentage}%* off`
+            text += `\n       - ${bold(`${percentage}%`)} off`
         }
 
         // Duration
-        if (isOnceForeverDiscount(discount)) {
-            if (discount.duration == 'once') {
-                text += ' (one-time)'
-            }
-
-            if (discount.duration == 'forever') {
-                text += ' (forever)'
-            }
-        }
-
-        if (isRepeatingDiscount(discount)) {
+        if (discount.duration === 'once') {
+            text += ' (one-time)'
+        } else if (discount.duration === 'forever') {
+            text += ' (forever)'
+        } else if (
+            discount.duration === 'repeating' &&
+            'durationInMonths' in discount
+        ) {
             text += ` (for ${discount.durationInMonths} month${
                 discount.durationInMonths > 1 ? 's' : ''
             })`
@@ -206,10 +208,9 @@ export class AlertDescriptionBuilder {
 
         // Actual discount amount applied (if provided)
         if (discountAmount !== undefined && discountAmount > 0) {
-            text += `\n       - *Savings* - *${this.formatMoney(
-                -discountAmount,
-                currency,
-            )}*`
+            text += `\n       - ${bold('Savings')} - ${bold(
+                this.formatMoney(-discountAmount, currency),
+            )}`
         }
 
         this.sections.push(text)
@@ -219,9 +220,7 @@ export class AlertDescriptionBuilder {
     hashtags(hashtags: string[], condition: boolean = true): this {
         if (condition && hashtags && hashtags.length > 0) {
             const formattedTags = hashtags
-                .map((tag) =>
-                    this.escapeMarkdown(tag.startsWith('#') ? tag : `#${tag}`),
-                )
+                .map((tag) => escapeHtml(tag.startsWith('#') ? tag : `#${tag}`))
                 .join(' ')
             this.sections.push(formattedTags)
         }
@@ -230,13 +229,14 @@ export class AlertDescriptionBuilder {
 
     link(label: string, url: string, condition: boolean = true): this {
         if (condition && label && url) {
-            this.sections.push(`🔗 [${this.escapeMarkdown(label)}](${url})`)
+            this.sections.push(`🔗 ${link(label, url)}`)
         }
         return this
     }
 
     customerInfo(customer: {
-        id: string
+        /** Omit for customers that don't exist yet, e.g. on an open checkout */
+        id?: string | null
         name?: string | null
         email?: string | null
         billingAddress?: Customer['billingAddress']
@@ -251,46 +251,61 @@ export class AlertDescriptionBuilder {
             ? metadataResult.data
             : {}
 
-        const deviceEmoji = metadata.deviceType
-            ? DEVICE_EMOJIS[metadata.deviceType]
-            : ''
-
-        const deviceString = metadata.deviceType
-            ? `${deviceEmoji ? deviceEmoji + ' ' : ''}${
-                  metadata.deviceType.charAt(0).toUpperCase() +
-                  metadata.deviceType.slice(1)
-              }`
-            : ''
-
-        const referrer = metadata.referrer
-
         const country = customer.billingAddress?.country
         const flag = country ? getCountryFlag(country) : ''
 
-        let section = `${flag ? `${flag} ` : ''}${this.escapeMarkdown(
-            customer.name ?? '',
-        )}\n\`${customer.email}\``
+        const lines: string[] = []
+
+        const heading = [flag, customer.name ? escapeHtml(customer.name) : '']
+            .filter(Boolean)
+            .join(' ')
+        if (heading) {
+            lines.push(heading)
+        }
+        if (customer.email) {
+            lines.push(code(customer.email))
+        }
+
+        const details: string[] = []
 
         if (customer.createdAt) {
-            section += `\n\n*Created* - \`${format(customer.createdAt, 'PPP')}\``
+            details.push(
+                `${bold('Created')} - ${code(this.formatDate(customer.createdAt, 'date'))}`,
+            )
         }
 
-        if (deviceString) {
-            section += `\n*Device* - \`${deviceString}\``
+        if (metadata.deviceType) {
+            const deviceType = metadata.deviceType
+            const deviceName =
+                deviceType.charAt(0).toUpperCase() + deviceType.slice(1)
+            details.push(
+                `${bold('Device')} - ${code(`${DEVICE_EMOJIS[deviceType]} ${deviceName}`)}`,
+            )
         }
 
-        if (referrer) {
-            section += `\n*Referrer* - 🌐 [${formatReferrer(referrer)}](${referrer})`
+        if (metadata.referrer) {
+            const referrer = metadata.referrer
+            // The referrer comes from the customer's browser, so only link real web URLs
+            const value = isHttpUrl(referrer)
+                ? `🌐 ${link(new URL(referrer).hostname, referrer)}`
+                : code(referrer)
+            details.push(`${bold('Referrer')} - ${value}`)
         }
 
-        section += '\n'
+        if (details.length > 0) {
+            lines.push('', ...details)
+        }
 
-        section += `\n🔗 [View Customer](${getCustomerLink(
-            this.config,
-            customer.id,
-        )})`
+        if (customer.id) {
+            lines.push(
+                '',
+                `🔗 ${link('View Customer', getCustomerLink(this.config, customer.id))}`,
+            )
+        }
 
-        this.sections.push(section)
+        if (lines.length > 0) {
+            this.sections.push(lines.join('\n'))
+        }
 
         return this
     }
@@ -302,38 +317,78 @@ export class AlertDescriptionBuilder {
         externalId?: string | null
         role?: string
     }): this {
-        let section = `${this.escapeMarkdown(
-            member.name ?? member.email,
-        )}\n\`${member.email}\``
+        const lines: string[] = []
 
-        if (member.role) {
-            section += `\n*Role* - \`${member.role.toUpperCase()}\``
+        if (member.name) {
+            lines.push(escapeHtml(member.name))
         }
 
-        if (member.email) {
-            section += `\n*Email* - \`${this.escapeMarkdown(member.email)}\``
+        lines.push(code(member.email))
+
+        if (member.role) {
+            lines.push(`${bold('Role')} - ${code(member.role.toUpperCase())}`)
         }
 
         if (member.externalId) {
-            section += `\n*External ID* - \`${this.escapeMarkdown(
-                member.externalId,
-            )}\``
+            lines.push(`${bold('External ID')} - ${code(member.externalId)}`)
         }
 
-        this.sections.push(section)
+        this.sections.push(lines.join('\n'))
         return this
     }
 
-    async build(): Promise<string> {
-        const sectionPromises = this.sections.map(async (section) => {
-            if (typeof section === 'string') {
-                return Promise.resolve(section)
+    build(): string {
+        // Collapse runs of separators (and drop leading/trailing ones) so that optional
+        // sections that end up empty don't leave stacks of blank lines behind.
+        const lines: string[] = []
+        for (const section of this.sections) {
+            if (section === '' && (lines.length === 0 || lines.at(-1) === '')) {
+                continue
             }
-            return section
-        })
+            lines.push(section)
+        }
+        while (lines.at(-1) === '') {
+            lines.pop()
+        }
+        return lines.join('\n')
+    }
 
-        const sections = await Promise.all(sectionPromises)
-        return sections.join('\n')
+    private formatMoney(amount: number, currency?: string | null): string {
+        return formatMoney(amount, currency ?? this.config.currency ?? 'usd')
+    }
+
+    private formatDate(date: Date, style?: 'datetime' | 'date'): string {
+        return formatDate(date, this.config.timeZone ?? 'UTC', style)
+    }
+
+    private formatPrice(
+        price: Price,
+        product: Product | CheckoutProduct | OrderProduct,
+    ): string {
+        switch (price.amountType) {
+            case 'fixed': {
+                let text = `(${bold(this.formatMoney(price.priceAmount, price.priceCurrency))}`
+                if (product.recurringInterval) {
+                    text += escapeHtml(
+                        formatRecurringInterval(
+                            product.recurringInterval,
+                            product.recurringIntervalCount,
+                        ),
+                    )
+                }
+                return `${text})`
+            }
+            case 'free':
+                return '(free)'
+            case 'custom':
+                return '(pay what you want)'
+            case 'seat_based':
+                return '(per seat)'
+            case 'metered_unit':
+                return '(metered)'
+            default:
+                return ''
+        }
     }
 }
 
@@ -341,39 +396,4 @@ const DEVICE_EMOJIS: Record<DeviceType, string> = {
     mobile: '📱',
     tablet: '🔳',
     desktop: '🖥️',
-}
-
-function formatReferrer(referrer: string): string {
-    try {
-        const url = new URL(referrer)
-        return url.hostname
-    } catch {
-        return referrer
-    }
-}
-
-function isFixedDiscount(
-    discount: Discount | NonNullable<Checkout['discount']>,
-): discount is DiscountFixedOnceForeverDuration | DiscountFixedRepeatDuration {
-    return discount.type === 'fixed'
-}
-
-function isPercentageDiscount(
-    discount: Discount | NonNullable<Checkout['discount']>,
-): discount is
-    DiscountPercentageOnceForeverDuration | DiscountPercentageRepeatDuration {
-    return discount.type === 'percentage'
-}
-
-function isOnceForeverDiscount(
-    discount: Discount | NonNullable<Checkout['discount']>,
-): discount is
-    DiscountFixedOnceForeverDuration | DiscountPercentageOnceForeverDuration {
-    return discount.duration === 'once'
-}
-
-function isRepeatingDiscount(
-    discount: Discount | NonNullable<Checkout['discount']>,
-): discount is DiscountFixedRepeatDuration | DiscountPercentageRepeatDuration {
-    return discount.duration === 'repeating'
 }

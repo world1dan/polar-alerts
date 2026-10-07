@@ -1,0 +1,537 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`alert templates checkout.created 1`] = `
+"<b>🛒🆕 Checkout Created</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>OPEN</code>
+<b>Created at</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Expires at</b> - <code>Oct 1, 2026, 1:00 PM UTC</code>
+
+<b>💰 Total</b> - <b>€85.50</b>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/checkouts/co_1">View Checkout</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Device</b> - <code>🖥️ Desktop</code>
+<b>Referrer</b> - 🌐 <a href="https://www.google.com/">www.google.com</a>
+
+<b>Custom Fields</b>
+<pre>{
+  &quot;company&quot;: &quot;Acme&quot;
+}</pre>
+
+<b>Metadata</b>
+<pre>{
+  &quot;campaign&quot;: &quot;fall&quot;
+}</pre>
+
+#checkout #created"
+`;
+
+exports[`alert templates checkout.updated 1`] = `
+"<b>🛒✅ Checkout Succeeded</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>SUCCEEDED</code>
+<b>Created at</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Expires at</b> - <code>Oct 1, 2026, 1:00 PM UTC</code>
+
+<b>💰 Total</b> - <b>€85.50</b>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/checkouts/co_1">View Checkout</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Device</b> - <code>🖥️ Desktop</code>
+<b>Referrer</b> - 🌐 <a href="https://www.google.com/">www.google.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+<b>Custom Fields</b>
+<pre>{
+  &quot;company&quot;: &quot;Acme&quot;
+}</pre>
+
+<b>Metadata</b>
+<pre>{
+  &quot;campaign&quot;: &quot;fall&quot;
+}</pre>
+
+#checkout #succeeded"
+`;
+
+exports[`alert templates subscription.created 1`] = `
+"<b>🔁✅ Subscription Created</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>TRIALING</code>
+<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
+       - <b>12.5%</b> off (forever)
+<b>💵 Amount</b> - <b>€85.50</b> every 3 months
+
+<b>🎁 Trial</b> - <code>14 days (until Oct 15, 2026)</code>
+
+<b>👥 Seats</b> - <code>5</code>
+
+<b>Current period start</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Current period end</b> - <code>Oct 15, 2026, 12:00 PM UTC</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+<b>Metadata</b>
+<pre>{
+  &quot;plan&quot;: &quot;team&quot;
+}</pre>
+
+#subscription #created"
+`;
+
+exports[`alert templates subscription.updated 1`] = `
+"<b>🔁⚠️ Subscription Payment Past Due</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>PAST_DUE</code>
+<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
+       - <b>12.5%</b> off (forever)
+<b>💵 Amount</b> - <b>€85.50</b> every 3 months
+
+<b>Current period start</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Current period end</b> - <code>Oct 15, 2026, 12:00 PM UTC</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#subscription #past_due"
+`;
+
+exports[`alert templates subscription.active 1`] = `
+"<b>🔁✅ Subscription Active</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>ACTIVE</code>
+<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
+       - <b>12.5%</b> off (forever)
+<b>💵 Amount</b> - <b>€85.50</b> every 3 months
+
+<b>👥 Seats</b> - <code>5</code>
+
+<b>Current period start</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Current period end</b> - <code>Oct 15, 2026, 12:00 PM UTC</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#subscription #active"
+`;
+
+exports[`alert templates subscription.canceled 1`] = `
+"<b>🔁❌ Subscription Canceled</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>ACTIVE (Canceled)</code>
+<b>Canceled on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Cancellation reason</b> - <code>TOO_EXPENSIVE</code>
+<b>Comment</b> - <code>Need a &lt;cheaper&gt; plan &amp; fewer seats</code>
+
+🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
+       - <b>12.5%</b> off (forever)
+<b>💵 Amount</b> - <b>€85.50</b> every 3 months
+
+<b>👥 Seats</b> - <code>5</code>
+
+<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Ends on</b> - <code>Oct 15, 2026, 12:00 PM UTC</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+<b>Metadata</b>
+<pre>{
+  &quot;plan&quot;: &quot;team&quot;
+}</pre>
+
+#subscription #canceled"
+`;
+
+exports[`alert templates subscription.uncanceled 1`] = `
+"<b>🔁✅ Subscription Uncanceled</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>ACTIVE</code>
+<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
+       - <b>12.5%</b> off (forever)
+<b>💵 Amount</b> - <b>€85.50</b> every 3 months
+
+<b>👥 Seats</b> - <code>5</code>
+
+<b>Current period start</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Current period end</b> - <code>Oct 15, 2026, 12:00 PM UTC</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#subscription #uncanceled"
+`;
+
+exports[`alert templates subscription.revoked 1`] = `
+"<b>🔁🚫 Subscription Revoked</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_pro">Pro Plan</a> (<b>€85.50</b> every 3 months)
+
+<b>Status</b> - <code>CANCELED</code>
+
+<b>👥 Seats</b> - <code>5</code>
+
+<b>Started on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Ended on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+🏷️ <b>Discount</b> - <b>Early adopter</b> (<code>EARLY_BIRD</code>)
+       - <b>12.5%</b> off (forever)
+<b>💵 Amount</b> - <b>€85.50</b> every 3 months
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#subscription #revoked"
+`;
+
+exports[`alert templates order.created 1`] = `
+"<b>💰🆕 Order Created</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_ebook">Ebook</a>
+
+<b>Status</b> - <code>PAID</code>
+<b>Created on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+<b>🧾 Subtotal</b> - <b>$15.50</b>
+🏷️ <b>Discount</b> - <b>Launch</b> (<code>LAUNCH_5</code>)
+       - <b>$5</b> off (one-time)
+       - <b>Savings</b> - <b>-$5</b>
+<b>💰 Total</b> - <b>$10.50</b>
+
+<b>Billing reason</b> - <code>PURCHASE</code>
+<b>Invoice number</b> - <code>INV-0001</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/ord_1">View Order</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/checkouts/co_1">View Checkout</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+<b>Custom Fields</b>
+<pre>{
+  &quot;company&quot;: &quot;Acme&quot;
+}</pre>
+
+<b>Metadata</b>
+<pre>{
+  &quot;source&quot;: &quot;landing&quot;
+}</pre>
+
+#order #created"
+`;
+
+exports[`alert templates order.paid 1`] = `
+"<b>💰✅ Order Paid</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_ebook">Ebook</a>
+
+<b>💰 Total</b> - <b>$10.50</b>
+
+<b>Billing reason</b> - <code>SUBSCRIPTION_CYCLE</code>
+<b>Invoice number</b> - <code>INV-0001</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/ord_1">View Order</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+🔗 <a href="https://polar.sh/dashboard/acme/sales/checkouts/co_1">View Checkout</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#order #paid"
+`;
+
+exports[`alert templates order.refunded 1`] = `
+"<b>💰🔙 Order Refunded</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_ebook">Ebook</a>
+
+<b>Status</b> - <code>PARTIALLY_REFUNDED</code>
+
+<b>🔙 Refunded Amount</b> - <b>$5</b>
+<b>💳 Platform Fee</b> - <b>$0.85</b>
+
+Original amount:
+<b>🧾 Subtotal</b> - <b>$15.50</b>
+🏷️ <b>Discount</b> - <b>Launch</b> (<code>LAUNCH_5</code>)
+       - <b>$5</b> off (one-time)
+       - <b>Savings</b> - <b>-$5</b>
+<b>💰 Total</b> - <b>$10.50</b>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/ord_1">View Order</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/checkouts/co_1">View Checkout</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#order #refunded"
+`;
+
+exports[`alert templates order.updated 1`] = `
+"<b>💰🔁 Order Updated</b>
+
+<a href="https://polar.sh/dashboard/acme/products/prod_ebook">Ebook</a>
+
+<b>Status</b> - <code>PAID</code>
+<b>Created on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>🔁 Updated on</b> - <code>Oct 2, 2026, 9:00 AM UTC</code>
+
+<b>🧾 Subtotal</b> - <b>$15.50</b>
+🏷️ <b>Discount</b> - <b>Launch</b> (<code>LAUNCH_5</code>)
+       - <b>$5</b> off (one-time)
+       - <b>Savings</b> - <b>-$5</b>
+<b>💰 Total</b> - <b>$10.50</b>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/ord_1">View Order</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/checkouts/co_1">View Checkout</a>
+
+🇩🇪 Jane Doe
+<code>jane_doe@example.com</code>
+
+<b>Created</b> - <code>Sep 15, 2026</code>
+<b>Device</b> - <code>📱 Mobile</code>
+<b>Referrer</b> - 🌐 <a href="https://news.ycombinator.com/item?id=1">news.ycombinator.com</a>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#order #updated"
+`;
+
+exports[`alert templates refund.created 1`] = `
+"<b>🔙🆕 Refund Created</b>
+
+<b>Status</b> - <code>SUCCEEDED</code>
+<b>Reason</b> - <code>DISPUTE_PREVENTION</code>
+<b>Created on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+<b>🔙 Refund Amount</b> - <b>$10.50</b>
+
+<b>⚠️ Dispute</b> - <code>EARLY_WARNING</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/ord_1">View Order</a>
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#refund #created"
+`;
+
+exports[`alert templates refund.updated 1`] = `
+"<b>🔙🔁 Refund Updated</b>
+
+<b>Status</b> - <code>FAILED</code>
+<b>Reason</b> - <code>CUSTOMER_REQUEST</code>
+<b>Created on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>🔁 Updated on</b> - <code>Oct 1, 2026, 12:05 PM UTC</code>
+
+<b>🔙 Refund Amount</b> - <b>$10.50</b>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/ord_1">View Order</a>
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#refund #updated"
+`;
+
+exports[`alert templates customer.created 1`] = `
+"<b>👤🆕 Customer Created</b>
+
+<b>ID</b> - <code>cus_1</code>
+<b>Name</b> - <code>Jane Doe</code>
+<b>Email</b> - <code>jane_doe@example.com</code>
+<b>Created on</b> - <code>Sep 15, 2026, 8:30 AM UTC</code>
+
+<b>External ID</b> - <code>user_42</code>
+
+<b>Metadata</b>
+<pre>{
+  &quot;deviceType&quot;: &quot;mobile&quot;,
+  &quot;referrer&quot;: &quot;https://news.ycombinator.com/item?id=1&quot;
+}</pre>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#customer #created"
+`;
+
+exports[`alert templates customer.updated 1`] = `
+"<b>👤🔁 Customer Updated</b>
+
+<b>ID</b> - <code>cus_1</code>
+<b>External ID</b> - <code>user_42</code>
+<b>Name</b> - <code>Jane Doe</code>
+<b>Email</b> - <code>jane_doe@example.com</code>
+
+<b>Updated at</b> - <code>Oct 2, 2026, 9:00 AM UTC</code>
+
+<b>Metadata</b>
+<pre>{
+  &quot;deviceType&quot;: &quot;mobile&quot;,
+  &quot;referrer&quot;: &quot;https://news.ycombinator.com/item?id=1&quot;
+}</pre>
+
+🔗 <a href="https://polar.sh/dashboard/acme/customers/cus_1">View Customer</a>
+
+#customer #updated"
+`;
+
+exports[`alert templates customer.deleted 1`] = `
+"<b>👤❌ Customer Deleted</b>
+
+<b>ID</b> - <code>cus_1</code>
+<b>Name</b> - <code>Jane Doe</code>
+<b>Email</b> - <code>jane_doe@example.com</code>
+<b>❌ Deleted at</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+#customer #deleted"
+`;
+
+exports[`alert templates customer_seat.assigned 1`] = `
+"<b>💺🆕 Seat Assigned</b>
+
+<b>Status</b> - <code>PENDING</code>
+<b>Assigned on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+<b>Invitation expires</b> - <code>Oct 8, 2026, 12:00 PM UTC</code>
+
+<b>Email</b> - <code>bob_smith@example.com</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+<b>Metadata</b>
+<pre>{
+  &quot;team&quot;: &quot;design&quot;
+}</pre>
+
+#seat #assigned"
+`;
+
+exports[`alert templates customer_seat.claimed 1`] = `
+"<b>💺✅ Seat Claimed</b>
+
+<b>Status</b> - <code>CLAIMED</code>
+<b>Claimed on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+Bob Smith
+<code>bob_smith@example.com</code>
+<b>Role</b> - <code>MEMBER</code>
+<b>External ID</b> - <code>ext_42</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+#seat #claimed"
+`;
+
+exports[`alert templates customer_seat.revoked 1`] = `
+"<b>💺🚫 Seat Revoked</b>
+
+<b>Status</b> - <code>REVOKED</code>
+<b>Revoked on</b> - <code>Oct 1, 2026, 12:00 PM UTC</code>
+
+Bob Smith
+<code>bob_smith@example.com</code>
+<b>Role</b> - <code>MEMBER</code>
+<b>External ID</b> - <code>ext_42</code>
+
+🔗 <a href="https://polar.sh/dashboard/acme/sales/subscriptions/sub_1">View Subscription</a>
+
+#seat #revoked"
+`;
