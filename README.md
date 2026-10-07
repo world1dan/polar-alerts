@@ -59,7 +59,23 @@ export const POST = Webhooks({
 })
 ```
 
-`handleWebhook` never throws, so a failed alert can't break your webhook handler. Errors are logged, and if an alert can't be built, a short "⚠️ Failed to build alert" message is sent instead.
+`handleWebhook` never throws, so a failed alert can't break your webhook handler. If an alert can't be built, a short "⚠️ Failed to build alert" message is sent instead.
+
+### Errors
+
+Errors are logged with `console.error` by default. Pass `onError` to report them yourself:
+
+```ts
+const alerts = new PolarAlertsClient({
+    // ...
+    onError: (error, { stage, eventType }) => {
+        // stage is 'build' (couldn't build the alert) or 'send' (couldn't deliver it)
+        Sentry.captureException(error, { tags: { stage, eventType } })
+    },
+})
+```
+
+If `onError` returns a promise, it's awaited (inside `waitUntil` when configured), so reports can finish before a serverless function freezes.
 
 ### Serverless
 
@@ -88,6 +104,7 @@ const alerts = new PolarAlertsClient({
 | `timeZone`              | IANA time zone for dates, e.g. `'Europe/Berlin'`. Defaults to `'UTC'`.                                             |
 | `currency`              | Fallback currency when a payload has none. Defaults to `'usd'`.                                                    |
 | `waitUntil`             | Defers delivery in serverless environments (see above).                                                            |
+| `onError`               | Called with `(error, context)` when an alert can't be built or delivered (see above).                              |
 
 ### Events
 

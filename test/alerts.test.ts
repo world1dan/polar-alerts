@@ -229,6 +229,102 @@ describe('building alerts', () => {
     })
 })
 
+describe('onError', () => {
+    const brokenSubscription = payload('subscription.created', {
+        ...subscription,
+        product: undefined as never,
+    })
+
+    it('reports build errors and still sends the fallback alert', async () => {
+        const onError = mock()
+
+        const [message] = await send(brokenSubscription, { onError })
+
+        expect(onError).toHaveBeenCalledTimes(1)
+        expect(onError.mock.calls[0][0]).toBeInstanceOf(TypeError)
+        expect(onError.mock.calls[0][1]).toEqual({
+            stage: 'build',
+            eventType: 'subscription.created',
+        })
+        expect(message.text).toContain('Failed to build subscription.created')
+        expect(console.error).not.toHaveBeenCalled()
+    })
+
+    it('reports delivery errors with the alert', async () => {
+        const failure = new Error('ETELEGRAM: 403 Forbidden')
+        sendMessage.mockRejectedValue(failure)
+        const onError = mock()
+
+        await send(orderPaid, { onError })
+
+        expect(onError).toHaveBeenCalledTimes(1)
+        const [error, context] = onError.mock.calls[0]
+        expect(error).toBe(failure)
+        expect(context).toMatchObject({
+            stage: 'send',
+            eventType: 'order.paid',
+            alert: { title: '💰✅ Order Paid' },
+        })
+    })
+
+    it('reports a rejected custom alert as a build error', async () => {
+        const onError = mock()
+
+        await new PolarAlertsClient({ ...baseConfig, onError }).sendAlert(
+            Promise.reject(new Error('no data')),
+        )
+
+        expect(onError.mock.calls[0][1]).toEqual({
+            stage: 'build',
+            eventType: undefined,
+        })
+        expect(sendMessage).not.toHaveBeenCalled()
+    })
+
+    it('waits for an async onError before resolving', async () => {
+        sendMessage.mockRejectedValue(new Error('network down'))
+        let reported = false
+
+        await send(orderPaid, {
+            onError: async () => {
+                await sleep(10)
+                reported = true
+            },
+        })
+
+        expect(reported).toBe(true)
+    })
+
+    it('runs onError inside waitUntil', async () => {
+        sendMessage.mockRejectedValue(new Error('network down'))
+        const onError = mock()
+        const pending: Promise<unknown>[] = []
+
+        await send(orderPaid, {
+            onError,
+            waitUntil: (promise) => {
+                pending.push(promise)
+            },
+        })
+        await pending[0]
+
+        expect(onError).toHaveBeenCalledTimes(1)
+    })
+
+    it('logs instead of throwing when onError throws', async () => {
+        sendMessage.mockRejectedValue(new Error('network down'))
+
+        await expect(
+            send(orderPaid, {
+                onError: () => {
+                    throw new Error('tracker down')
+                },
+            }),
+        ).resolves.toBeDefined()
+        expect(console.error).toHaveBeenCalled()
+    })
+})
+
 describe('escaping', () => {
     it('keeps the markup valid for hostile or unusual values', async () => {
         const message = await sendOne(

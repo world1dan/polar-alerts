@@ -1,7 +1,7 @@
 import type { validateEvent } from '@polar-sh/sdk/webhooks'
 import * as z from 'zod/v4'
 
-import { TelegramAlertsConfig } from './senders'
+import { AlertParams, TelegramAlertsConfig } from './senders'
 
 export type WebhookPayload = ReturnType<typeof validateEvent>
 
@@ -24,6 +24,18 @@ export const $PolarAlertsCustomerMetadata = z.object({
 export type PolarAlertsCustomerMetadata = z.infer<
     typeof $PolarAlertsCustomerMetadata
 >
+
+export interface PolarAlertsErrorContext {
+    /**
+     * `build`: the alert couldn't be built from the webhook (a short fallback alert is
+     * sent instead). `send`: the alert couldn't be delivered.
+     */
+    stage: 'build' | 'send'
+    /** The webhook event being handled, if the error came from `handleWebhook`. */
+    eventType?: EventType
+    /** The alert that couldn't be delivered, for `send` errors. */
+    alert?: AlertParams
+}
 
 export interface PolarAlertsConfig {
     /** Your Polar server environment. Used to construct dashboard links. */
@@ -67,4 +79,16 @@ export interface PolarAlertsConfig {
      * for more details.
      */
     waitUntil?: (promise: Promise<unknown>) => void | undefined
+    /**
+     * Called when an alert can't be built or delivered, e.g. to report it to your error
+     * tracker. Alerts never throw into your webhook handler, so this is the only place
+     * these errors surface. If it returns a promise, it's awaited (inside `waitUntil`
+     * when configured), so reports can finish before a serverless function freezes.
+     *
+     * @default logs the error with `console.error`
+     */
+    onError?: (
+        error: unknown,
+        context: PolarAlertsErrorContext,
+    ) => void | Promise<void>
 }

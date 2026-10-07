@@ -1,7 +1,12 @@
 import { AlertDescriptionBuilder } from './description-builder'
 import { AlertParams, AlertsSender, TelegramAlertSender } from './senders'
 import { AlertTemplates, createAlertTemplates } from './templates'
-import { EventType, PolarAlertsConfig, WebhookPayload } from './types'
+import {
+    EventType,
+    PolarAlertsConfig,
+    PolarAlertsErrorContext,
+    WebhookPayload,
+} from './types'
 
 /**
  * Which events alert by default. Listing every event type means a new event in the
@@ -73,11 +78,30 @@ export class PolarAlertsClient {
      * delivered, or immediately when `waitUntil` is configured.
      */
     async sendAlert(params: AlertParams | Promise<AlertParams>): Promise<void> {
-        const delivery = this.deliver(params)
+        await this.run(this.deliver(params))
+    }
 
+    /**
+     * Handle a Polar webhook event and send the appropriate alert.
+     *
+     * Never throws, so a broken alert can't fail your webhook handler: errors go to
+     * `onError` (or the console), and if an alert can't be built a short fallback
+     * alert is sent instead. Resolves once the alert has been delivered, or
+     * immediately when `waitUntil` is configured.
+     */
+    async handleWebhook(payload: WebhookPayload): Promise<void> {
+        if (!this.isEventEnabled(payload.type)) {
+            return
+        }
+
+        await this.run(this.process(payload))
+    }
+
+    /** Waits for `task`, or hands it to `waitUntil` when configured. */
+    private async run(task: Promise<void>): Promise<void> {
         if (this.config.waitUntil) {
             try {
-                this.config.waitUntil(delivery)
+                this.config.waitUntil(task)
                 return
             } catch (error) {
                 console.error(
@@ -87,26 +111,25 @@ export class PolarAlertsClient {
             }
         }
 
-        await delivery
+        await task
     }
 
-    /**
-     * Handle a Polar webhook event and send the appropriate alert.
-     *
-     * Never throws, so a broken alert can't fail your webhook handler: errors are
-     * logged, and if an alert can't be built a short fallback alert is sent instead.
-     * Resolves once the alert has been delivered, or immediately when `waitUntil`
-     * is configured.
-     */
-    async handleWebhook(payload: WebhookPayload): Promise<void> {
-        if (!this.isEventEnabled(payload.type)) {
-            return
+    /** Builds and delivers the alert for a webhook. Never rejects. */
+    private async process(payload: WebhookPayload): Promise<void> {
+        let alert: AlertParams | undefined
+
+        try {
+            alert = this.buildAlert(payload)
+        } catch (error) {
+            await this.reportError(error, {
+                stage: 'build',
+                eventType: payload.type,
+            })
+            alert = this.buildFailureAlert(payload, error)
         }
 
-        const alert = this.buildAlert(payload)
-
         if (alert) {
-            await this.sendAlert(alert)
+            await this.deliver(alert, payload.type)
         }
     }
 
@@ -129,15 +152,7 @@ export class PolarAlertsClient {
             | ((data: WebhookPayload['data']) => AlertParams | undefined)
             | undefined
 
-        try {
-            return template?.(payload.data)
-        } catch (error) {
-            console.error(
-                `[polar-alerts] Failed to build alert for ${payload.type}:`,
-                error,
-            )
-            return this.buildFailureAlert(payload, error)
-        }
+        return template?.(payload.data)
     }
 
     private buildFailureAlert(
@@ -163,23 +178,53 @@ export class PolarAlertsClient {
     /** Sends to every sender. Never rejects, so it's safe to hand to `waitUntil`. */
     private async deliver(
         params: AlertParams | Promise<AlertParams>,
+        eventType?: EventType,
     ): Promise<void> {
+        let alert: AlertParams
         try {
-            const alert = await params
-            const results = await Promise.allSettled(
-                this.senders.map((sender) => sender.send(alert)),
-            )
-
-            for (const result of results) {
-                if (result.status === 'rejected') {
-                    console.error(
-                        '[polar-alerts] Failed to send alert:',
-                        result.reason,
-                    )
-                }
-            }
+            alert = await params
         } catch (error) {
-            console.error('[polar-alerts] Failed to send alert:', error)
+            await this.reportError(error, { stage: 'build', eventType })
+            return
+        }
+
+        const results = await Promise.allSettled(
+            this.senders.map((sender) => sender.send(alert)),
+        )
+
+        for (const result of results) {
+            if (result.status === 'rejected') {
+                await this.reportError(result.reason, {
+                    stage: 'send',
+                    eventType,
+                    alert,
+                })
+            }
+        }
+    }
+
+    private async reportError(
+        error: unknown,
+        context: PolarAlertsErrorContext,
+    ): Promise<void> {
+        if (!this.config.onError) {
+            console.error(
+                `[polar-alerts] Failed to ${context.stage} alert${
+                    context.eventType ? ` for ${context.eventType}` : ''
+                }:`,
+                error,
+            )
+            return
+        }
+
+        try {
+            await this.config.onError(error, context)
+        } catch (onErrorFailure) {
+            console.error(
+                '[polar-alerts] onError threw while handling:',
+                error,
+                onErrorFailure,
+            )
         }
     }
 }
